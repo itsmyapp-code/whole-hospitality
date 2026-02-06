@@ -12,6 +12,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+import Navbar from "./components/Navbar";
+
 export const metadata: Metadata = {
   title: "Whole Hospitality",
   description: "Whole Hospitality Website",
@@ -27,6 +29,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Navbar />
         {children}
       </body>
     </html>
