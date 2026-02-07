@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Head from "next/head";
 import Image from "next/image";
+import { Copy, Pencil, Trash2 } from "lucide-react";
 
 // --- Utility Functions ---
 
@@ -52,7 +53,7 @@ const Header = () => (
 // --- Sub-Calculators ---
 
 // 1. Draught Calculator
-const DraughtCalc = ({ onSave }: { onSave: (data: CalculationItem) => void }) => {
+const DraughtCalc = ({ onSave, initialData }: { onSave: (data: CalculationItem) => void, initialData?: CalculationItem | null }) => {
     const [name, setName] = useState("");
     const [size, setSize] = useState("11 Gal");
     const [basis, setBasis] = useState("Per Barrel");
@@ -63,6 +64,21 @@ const DraughtCalc = ({ onSave }: { onSave: (data: CalculationItem) => void }) =>
     const [incVal, setIncVal] = useState("");
     const [duty, setDuty] = useState("");
     const [halfPrem, setHalfPrem] = useState("0.10");
+
+    useEffect(() => {
+        if (initialData && initialData.type === "Draught") {
+            setName(initialData.product || "");
+            const d = initialData.details;
+            if (d["Unit Size"]) setSize(d["Unit Size"]);
+            if (d["Cost Basis"]) setBasis(d["Cost Basis"]);
+            if (d["Current Cost (Ex-VAT)"]) setCost(d["Current Cost (Ex-VAT)"].replace(/[£,]/g, ""));
+            if (d["Target GP"]) setGp(d["Target GP"].replace(/[%]/g, ""));
+            if (d["Half Surcharge"]) setHalfPrem(d["Half Surcharge"].replace(/[£,]/g, ""));
+            if (d["Forecast Increase Type"]) setIncType(d["Forecast Increase Type"]);
+            if (d["Forecast Increase Value"]) setIncVal(d["Forecast Increase Value"]);
+            if (d["Extra Duty (Ex-VAT)"]) setDuty(d["Extra Duty (Ex-VAT)"].replace(/[£,]/g, ""));
+        }
+    }, [initialData]);
 
     const [result, setResult] = useState<null | {
         newTotal: number;
@@ -193,7 +209,7 @@ const DraughtCalc = ({ onSave }: { onSave: (data: CalculationItem) => void }) =>
 };
 
 // 2. Spirits Calculator
-const SpiritsCalc = ({ onSave }: { onSave: (data: CalculationItem) => void }) => {
+const SpiritsCalc = ({ onSave, initialData }: { onSave: (data: CalculationItem) => void, initialData?: CalculationItem | null }) => {
     const [name, setName] = useState("");
     const [size, setSize] = useState("70cl");
     const [cost, setCost] = useState("");
@@ -201,6 +217,23 @@ const SpiritsCalc = ({ onSave }: { onSave: (data: CalculationItem) => void }) =>
 
     const [incType, setIncType] = useState("Percentage (%)");
     const [incVal, setIncVal] = useState("");
+
+    useEffect(() => {
+        if (initialData && initialData.type === "Spirits") {
+            setName(initialData.product || "");
+            const d = initialData.details;
+            if (d["Bottle Size"]) setSize(d["Bottle Size"]);
+            if (d["New Bottle Cost (Ex-VAT)"]) setCost(d["New Bottle Cost (Ex-VAT)"].replace(/[£,]/g, "")); // Note: This mapping might be tricky depending on how we saved "New" vs "Current". Assuming user wants to edit the inputs.
+            // Actually, "Current Btl Cost" in history was the calculated one if increase applied. 
+            // Let's use "New Bottle Cost" which represents the input cost before increase? logic check:
+            // logic: currentCost = input.
+            // stored: "New Bottle Cost" = currCost (the input). "Current Btl Cost" = currCost adjusted back? 
+            // In calculate: "New Bottle Cost (Ex-VAT)" is currCost. So yes, load this one.
+            if (d["Target GP"]) setGp(d["Target GP"].replace(/[%]/g, ""));
+            if (d["Increase Type"]) setIncType(d["Increase Type"]);
+            if (d["Increase Value"]) setIncVal(d["Increase Value"]);
+        }
+    }, [initialData]);
 
     const [result, setResult] = useState<null | {
         newCost: number;
@@ -301,13 +334,25 @@ const SpiritsCalc = ({ onSave }: { onSave: (data: CalculationItem) => void }) =>
 };
 
 // 3. Wine Calculator
-const WineCalc = ({ onSave }: { onSave: (data: CalculationItem) => void }) => {
+const WineCalc = ({ onSave, initialData }: { onSave: (data: CalculationItem) => void, initialData?: CalculationItem | null }) => {
     const [name, setName] = useState("");
     const [cost, setCost] = useState("");
     const [gp, setGp] = useState("");
 
     const [incType, setIncType] = useState("Percentage (%)");
     const [incVal, setIncVal] = useState("");
+
+    useEffect(() => {
+        if (initialData && initialData.type === "Wine") {
+            setName(initialData.product || "");
+            const d = initialData.details;
+            // "New Btl Cost (Ex-VAT)" corresponds to the input 'currCost'
+            if (d["New Btl Cost (Ex-VAT)"]) setCost(d["New Btl Cost (Ex-VAT)"].replace(/[£,]/g, ""));
+            if (d["Target GP"]) setGp(d["Target GP"].replace(/[%]/g, ""));
+            if (d["Increase Type"]) setIncType(d["Increase Type"]);
+            if (d["Increase Value"]) setIncVal(d["Increase Value"]);
+        }
+    }, [initialData]);
 
     const [result, setResult] = useState<null | {
         btlPrice: number;
@@ -447,6 +492,7 @@ const SelectField = ({ label, value, onChange, options }: { label: string, value
 export default function GPCalculatorPage() {
     const [activeTab, setActiveTab] = useState<"Instructions" | "Draught" | "Spirits" | "Wine">("Instructions");
     const [history, setHistory] = useState<CalculationItem[]>([]);
+    const [itemToLoad, setItemToLoad] = useState<CalculationItem | null>(null);
 
     // Load history from localStorage on mount
     useEffect(() => {
@@ -477,6 +523,13 @@ export default function GPCalculatorPage() {
 
     const printHistory = () => {
         window.print();
+    };
+
+    const loadItem = (item: CalculationItem) => {
+        setActiveTab(item.type);
+        setItemToLoad(item);
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     return (
@@ -536,9 +589,9 @@ export default function GPCalculatorPage() {
                             </div>
                         )}
 
-                        {activeTab === "Draught" && <DraughtCalc onSave={addToHistory} />}
-                        {activeTab === "Spirits" && <SpiritsCalc onSave={addToHistory} />}
-                        {activeTab === "Wine" && <WineCalc onSave={addToHistory} />}
+                        {activeTab === "Draught" && <DraughtCalc onSave={addToHistory} initialData={itemToLoad} />}
+                        {activeTab === "Spirits" && <SpiritsCalc onSave={addToHistory} initialData={itemToLoad} />}
+                        {activeTab === "Wine" && <WineCalc onSave={addToHistory} initialData={itemToLoad} />}
                     </div>
                 </div>
 
@@ -559,8 +612,17 @@ export default function GPCalculatorPage() {
                                 history.map((item) => (
                                     <div key={item.id} className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 text-sm">
                                         <div className="flex justify-between items-start mb-1">
-                                            <span className="font-bold text-slate-800">{item.product}</span>
-                                            <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-1 rounded">{item.type}</span>
+                                            <div>
+                                                <span className="font-bold text-slate-800 mr-2">{item.product}</span>
+                                                <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-1 rounded">{item.type}</span>
+                                            </div>
+                                            <button
+                                                onClick={() => loadItem(item)}
+                                                className="text-slate-400 hover:text-blue-600 transition-colors p-1"
+                                                title="Load into Calculator"
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </button>
                                         </div>
                                         <div className="text-slate-500 text-xs space-y-1">
                                             {Object.entries(item.details).slice(0, 3).map(([k, v]) => (
