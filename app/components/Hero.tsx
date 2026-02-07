@@ -10,7 +10,7 @@ export default function Hero() {
 
             <div className="relative z-10 text-center px-4 max-w-4xl mx-auto flex flex-col items-center">
                 {/* Logo */}
-                <div className="mb-8 relative w-48 h-48 sm:w-64 sm:h-64">
+                <div className="mb-8 relative w-48 h-48 sm:w-64 sm:h-64 hidden md:block">
                     {/* Using standard img for now if next/image has issues with local files in some envs, 
               but planning for next/image. 
               Assuming public/logo.png is available at /logo.png */}
