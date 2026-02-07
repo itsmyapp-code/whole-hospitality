@@ -33,7 +33,7 @@ export default function Navbar() {
 
     return (
         <nav
-            className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled || isOpen ? "bg-gray-900/95 backdrop-blur-sm shadow-md" : "bg-transparent"
+            className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled || isOpen ? "bg-slate-800/95 backdrop-blur-sm shadow-md" : "bg-transparent"
                 }`}
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -41,12 +41,23 @@ export default function Navbar() {
                     {/* Logo Area */}
                     <div className="flex-shrink-0">
                         <Link href="/" className="flex items-center">
-                            {/* Make logo visible when scrolled or menu open, otherwise maybe too subtle on hero? 
-                                Actually, checking Hero.tsx, hero background is dark/black. 
-                                So white text/logo is perfect. */}
-                            <span className="text-white font-bold text-xl tracking-wider">
-                                WHOLE HOSPITALITY
-                            </span>
+                            {/* Logo Image */}
+                            <div className="relative h-10 w-10 mr-2">
+                                <Image
+                                    src="/logo.png"
+                                    alt="Whole Hospitality Logo"
+                                    fill
+                                    className="object-contain"
+                                />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-white font-bold text-sm sm:text-lg md:text-xl tracking-wider leading-none">
+                                    WHOLE HOSPITALITY
+                                </span>
+                                <span className="text-gray-300 text-[10px] sm:text-xs tracking-widest hidden sm:block">
+                                    PROFESSIONAL SOLUTIONS
+                                </span>
+                            </div>
                         </Link>
                     </div>
 
@@ -116,6 +127,6 @@ export default function Navbar() {
                     </div>
                 </div>
             </div>
-        </nav>
+        </nav >
     );
 }

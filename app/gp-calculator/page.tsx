@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Head from "next/head";
+import Image from "next/image";
 
 // --- Utility Functions ---
 
@@ -25,8 +26,15 @@ type CalculationItem = {
 const Header = () => (
     <header className="bg-white border-b border-gray-200 p-6 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-            {/* Placeholder for Logo if available */}
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">GP CALCULATOR PRO</h1>
+            <div className="relative h-10 w-10">
+                <Image
+                    src="/logo.png"
+                    alt="Whole Hospitality Logo"
+                    fill
+                    className="object-contain"
+                />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-700 tracking-tight">GP CALCULATOR LITE</h1>
         </div>
         <div className="flex gap-4">
             <a
@@ -125,7 +133,10 @@ const DraughtCalc = ({ onSave }: { onSave: (data: CalculationItem) => void }) =>
                 "Current Cost (Ex-VAT)": `£${currCost.toFixed(2)}`,
                 "Target GP": `${targetGp}%`,
                 "Half Surcharge": `£${hPrem.toFixed(2)}`,
-                "Forecast Increase": `${increaseValue} (${incType})`,
+                "Forecast Increase Type": incType,
+                "Forecast Increase Value": `${incVal}`,
+                "Forecast Increase Amount": `£${increaseAmt.toFixed(2)}`,
+                "Extra Duty (Ex-VAT)": `£${dutyTotal.toFixed(2)}`,
                 "New Total Cost (Ex-VAT)": `£${forecastTotal.toFixed(2)}`,
                 "Recommended Pint": `£${recommPint.toFixed(2)}`,
                 "Recommended Half": `£${recommHalf.toFixed(2)}`,
@@ -161,9 +172,9 @@ const DraughtCalc = ({ onSave }: { onSave: (data: CalculationItem) => void }) =>
 
             <button
                 onClick={calculate}
-                className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
+                className="w-full bg-slate-700 text-white font-bold py-4 rounded-xl hover:bg-slate-600 transition-colors shadow-lg shadow-slate-200"
             >
-                RUN CALCULATION
+                RUN CALCULATION LITE
             </button>
 
             {result && (
@@ -233,6 +244,10 @@ const SpiritsCalc = ({ onSave }: { onSave: (data: CalculationItem) => void }) =>
             timestamp: new Date().toISOString(),
             details: {
                 "Bottle Size": size,
+                "Current Btl Cost (Ex-VAT)": `£${(incType === "Percentage (%)" ? currCost / (1 + increaseValue / 100) : currCost - increaseValue).toFixed(2)}`,
+                "Target GP": `${targetGp}%`,
+                "Increase Type": incType,
+                "Increase Value": `${incVal}`,
                 "New Bottle Cost (Ex-VAT)": `£${currCost.toFixed(2)}`,
                 "Recommended 25ml": `£${sale25.toFixed(2)}`,
                 "Recommended 50ml": `£${sale50.toFixed(2)}`,
@@ -265,9 +280,9 @@ const SpiritsCalc = ({ onSave }: { onSave: (data: CalculationItem) => void }) =>
 
             <button
                 onClick={calculate}
-                className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
+                className="w-full bg-slate-700 text-white font-bold py-4 rounded-xl hover:bg-slate-600 transition-colors shadow-lg shadow-slate-200"
             >
-                RUN CALCULATION
+                RUN CALCULATION LITE
             </button>
 
             {result && (
@@ -341,6 +356,10 @@ const WineCalc = ({ onSave }: { onSave: (data: CalculationItem) => void }) => {
             product: prodName,
             timestamp: new Date().toISOString(),
             details: {
+                "Current Btl Cost (Ex-VAT)": `£${(incType === "Percentage (%)" ? currCost / (1 + increaseValue / 100) : currCost - increaseValue).toFixed(2)}`,
+                "Target GP": `${targetGp}%`,
+                "Increase Type": incType,
+                "Increase Value": `${incVal}`,
                 "New Btl Cost (Ex-VAT)": `£${currCost.toFixed(2)}`,
                 "Recommended Bottle": `£${btlPrice.toFixed(2)}`,
                 "Recommended 250ml": `£${m250.toFixed(2)}`,
@@ -374,9 +393,9 @@ const WineCalc = ({ onSave }: { onSave: (data: CalculationItem) => void }) => {
 
             <button
                 onClick={calculate}
-                className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
+                className="w-full bg-slate-700 text-white font-bold py-4 rounded-xl hover:bg-slate-600 transition-colors shadow-lg shadow-slate-200"
             >
-                RUN CALCULATION
+                RUN CALCULATION LITE
             </button>
 
             {result && (
@@ -479,8 +498,8 @@ export default function GPCalculatorPage() {
                                 key={tab}
                                 onClick={() => setActiveTab(tab as any)}
                                 className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all ${activeTab === tab
-                                        ? "bg-slate-900 text-white shadow-md"
-                                        : "text-slate-500 hover:bg-gray-50"
+                                    ? "bg-slate-700 text-white shadow-md"
+                                    : "text-slate-500 hover:bg-gray-50"
                                     }`}
                             >
                                 {tab}
@@ -492,7 +511,7 @@ export default function GPCalculatorPage() {
                     <div className="min-h-[500px]">
                         {activeTab === "Instructions" && (
                             <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200 prose max-w-none animate-in fade-in duration-500">
-                                <h2 className="text-2xl font-bold text-slate-800 mb-4">Welcome to GP Calculator Pro</h2>
+                                <h2 className="text-2xl font-bold text-slate-700 mb-4">Welcome to GP Calculator Lite</h2>
                                 <p className="text-slate-600 mb-4">
                                     This tool is designed to calculate accurate sales pricing and forecast the impact of price hikes.
                                 </p>
@@ -607,10 +626,22 @@ export default function GPCalculatorPage() {
             {/* Hidden Print Area that only shows on print */}
             <div className="hidden print:block p-8 bg-white text-black absolute top-0 left-0 w-full min-h-screen z-[9999]">
                 <div className="flex justify-between items-end border-b-2 border-slate-800 pb-4 mb-8">
-                    <h1 className="text-4xl font-bold">STRATEGY REPORT</h1>
+                    <div className="flex items-center gap-4">
+                        <div className="relative h-16 w-16">
+                            <Image
+                                src="/logo.png"
+                                alt="Whole Hospitality Logo"
+                                fill
+                                className="object-contain"
+                            />
+                        </div>
+                        <h1 className="text-4xl font-bold">STRATEGY REPORT</h1>
+                    </div>
                     <div className="text-right">
-                        <p className="text-sm italic">Whole Hospitality</p>
-                        <p className="text-xs text-slate-500">Issued: {new Date().toLocaleString()}</p>
+                        <p className="text-sm font-bold">Whole Hospitality</p>
+                        <p className="text-sm">info@wholehospitality.co.uk</p>
+                        <p className="text-sm">wholehospitality.co.uk</p>
+                        <p className="text-xs text-slate-500 mt-2">Issued: {new Date().toLocaleString()}</p>
                     </div>
                 </div>
 
