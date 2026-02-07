@@ -16,7 +16,20 @@ import Navbar from "./components/Navbar";
 
 export const metadata: Metadata = {
   title: "Whole Hospitality",
-  description: "Whole Hospitality Website",
+  description: "Whole Hospitality - Professional Backend Solutions",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Whole Hospitality",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport = {
+  themeColor: "#334155",
 };
 
 export default function RootLayout({
