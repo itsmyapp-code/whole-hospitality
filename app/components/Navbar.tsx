@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
@@ -31,9 +32,11 @@ export default function Navbar() {
         { name: "About", href: "/#about" },
     ];
 
+    const pathname = usePathname();
+
     return (
         <nav
-            className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled || isOpen ? "bg-slate-800/95 backdrop-blur-sm shadow-md" : "bg-transparent"
+            className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled || isOpen || pathname !== "/" ? "bg-slate-800/95 backdrop-blur-sm shadow-md" : "bg-transparent"
                 }`}
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

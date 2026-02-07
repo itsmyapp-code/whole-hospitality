@@ -2,15 +2,15 @@ import Image from "next/image";
 
 export default function Hero() {
     return (
-        <section className="relative h-screen flex items-center justify-center bg-gray-900 text-white overflow-hidden">
+        <section className="relative h-screen flex items-center justify-center bg-slate-700 text-white overflow-hidden">
             {/* Background Image Placeholder */}
             <div className="absolute inset-0 bg-black/50 z-0">
-                <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900" />
+                <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800" />
             </div>
 
             <div className="relative z-10 text-center px-4 max-w-4xl mx-auto flex flex-col items-center">
                 {/* Logo */}
-                <div className="mb-8 relative w-48 h-48 sm:w-64 sm:h-64 hidden md:block">
+                <div className="mb-8 relative w-48 h-48 sm:w-64 sm:h-64 hidden lg:block">
                     {/* Using standard img for now if next/image has issues with local files in some envs, 
               but planning for next/image. 
               Assuming public/logo.png is available at /logo.png */}

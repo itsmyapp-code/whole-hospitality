@@ -24,7 +24,7 @@ type CalculationItem = {
 // --- Components ---
 
 const Header = () => (
-    <header className="bg-white border-b border-gray-200 p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+    <header className="print:hidden bg-white border-b border-gray-200 p-6 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
             <div className="relative h-10 w-10">
                 <Image
@@ -487,7 +487,7 @@ export default function GPCalculatorPage() {
 
             <Header />
 
-            <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 flex flex-col lg:flex-row gap-8">
+            <main className="print:hidden max-w-7xl mx-auto px-4 md:px-8 py-8 flex flex-col lg:flex-row gap-8">
 
                 {/* Left Column: Calculator */}
                 <div className="flex-1 space-y-6">
@@ -594,34 +594,7 @@ export default function GPCalculatorPage() {
 
             </main>
 
-            {/* Print Styles */}
-            <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          aside, aside * {
-            visibility: visible;
-          }
-          aside {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            display: block !important;
-          }
-          aside button {
-            display: none !important;
-          }
-          header, footer, nav {
-            display: none;
-          }
-          /* Custom Print Layout to look like the "Strategy Report" */
-          #print-area {
-             visibility: visible;
-          }
-        }
-      `}</style>
+
 
             {/* Hidden Print Area that only shows on print */}
             <div className="hidden print:block p-8 bg-white text-black absolute top-0 left-0 w-full min-h-screen z-[9999]">
@@ -668,7 +641,7 @@ export default function GPCalculatorPage() {
                 </div>
             </div>
 
-            <footer className="text-center text-slate-400 text-sm mt-8">
+            <footer className="print:hidden text-center text-slate-400 text-sm mt-8">
                 © 2026 Whole Hospitality | Professional Backend Solutions
             </footer>
         </div>
