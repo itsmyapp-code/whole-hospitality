@@ -72,7 +72,7 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
 
     // Reality Check Inputs
     const [currentPrice, setCurrentPrice] = useState("");
-    const [volume, setVolume] = useState("");
+
 
     const [incType, setIncType] = useState("Percentage (%)");
     const [incVal, setIncVal] = useState("");
@@ -93,7 +93,6 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
             if (d["Extra Duty (Ex-VAT)"]) setDuty(d["Extra Duty (Ex-VAT)"].replace(/[£,]/g, ""));
             // New fields
             if (d["Current Sell Price"]) setCurrentPrice(d["Current Sell Price"].replace(/[£,]/g, ""));
-            if (d["Weekly Volume"]) setVolume(d["Weekly Volume"]);
         }
     }, [initialData]);
 
@@ -110,7 +109,7 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
         pint: number;
         half: number;
         currentGP: number | null;
-        profitLeak: number | null;
+
         marginUplift: number | null;
     }>(null);
 
@@ -166,10 +165,10 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
 
         // --- Reality Check & Analytics ---
         const currSell = parseFloat(currentPrice) || 0;
-        const wkVol = parseFloat(volume) || 0;
+
 
         let currentGP = null;
-        let profitLeak = null;
+
         let marginUplift = null;
 
         if (currSell > 0) {
@@ -177,21 +176,8 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
             const netSales = currSell / 1.2;
             currentGP = ((netSales - costPerPint) / netSales) * 100;
 
-            // Profit Leak
-            // Diff per pint (Ex VAT) that we are losing
-            const potentialNet = recommPint / 1.2;
-            const diffNet = potentialNet - netSales;
-
-            // Leak = DiffNet * PintsInKeg * KegsPerWeek * 52
-            // PintsInKeg = pints
-            if (wkVol > 0) {
-                profitLeak = diffNet * pints * wkVol * 52;
-            }
-
             // Margin Uplift (Cash) per keg
-            marginUplift = (recommPint - currSell); // Show price diff inc vat? Or GP% diff?
-            // Usually "Margin Uplift" refers to GP%.
-            // But let's calculate the price difference for the table: "Recommended - Current"
+            marginUplift = (recommPint - currSell);
         }
 
         setResult({
@@ -199,7 +185,6 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
             pint: recommPint,
             half: recommHalf,
             currentGP: currentGP,
-            profitLeak: profitLeak,
             marginUplift: marginUplift
         });
 
@@ -223,8 +208,6 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                 "Current GP": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
                 "Recommended Pint": `£${recommPint.toFixed(2)}`,
                 "Recommended Half": `£${recommHalf.toFixed(2)}`,
-                "Weekly Volume": wkVol > 0 ? `${wkVol}` : "-",
-                "Annualized Profit Leak": profitLeak !== null ? `£${profitLeak.toFixed(2)}` : "-",
             },
         };
         onSave(item);
@@ -232,82 +215,88 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Current Pricing</h3>
-                    <div className="space-y-4">
-                        <InputField label="Product Name" value={name} onChange={setName} />
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Product Details</h3>
+                    <button
+                        onClick={calculate}
+                        className="bg-slate-700 text-white text-xs font-bold py-2 px-4 rounded-lg hover:bg-slate-600 transition-colors shadow-lg shadow-slate-200"
+                    >
+                        CALCULATE
+                    </button>
+                </div>
+                <div className="space-y-4">
+                    <InputField label="Product Name" value={name} onChange={setName} />
+                    <div className="grid grid-cols-3 gap-4">
                         <SelectField label="Size" value={size} onChange={setSize} options={["11 Gal", "22 Gal", "9 Gal", "1 Gal", "30 Ltr", "50 Ltr"]} />
                         <SelectField label="Basis" value={basis} onChange={setBasis} options={["Per Barrel", "Per Gallon"]} />
                         <InputField label="Cost (Ex-VAT) £" value={cost} onChange={setCost} type="number" />
-                        <InputField label="Target GP %" value={gp} onChange={setGp} type="number" />
                     </div>
                 </div>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h3 className="text-sm font-bold text-blue-500 uppercase tracking-wider mb-4">Reality Check</h3>
+                    <h3 className="text-sm font-bold text-blue-500 uppercase tracking-wider mb-4">Targets & Reality</h3>
                     <div className="space-y-4">
-                        <InputField label="Current Pint Price (Inc-VAT) £" value={currentPrice} onChange={setCurrentPrice} type="number" />
-                        <InputField label={`Weekly Volume (${size} units)`} value={volume} onChange={setVolume} type="number" />
+                        <div className="grid grid-cols-2 gap-4">
+                            <InputField label="Target GP %" value={gp} onChange={setGp} type="number" />
+                            <InputField label="Current Pint (Inc-VAT)" value={currentPrice} onChange={setCurrentPrice} type="number" />
+                        </div>
                     </div>
                 </div>
 
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider mb-4">Price Forecast</h3>
                     <div className="space-y-4">
-                        <SelectField label="Increase Type" value={incType} onChange={setIncType} options={["Percentage (%)", "Fixed £ Barrel", "Fixed £ Gallon"]} />
-                        <InputField label="Increase (Ex-VAT)" value={incVal} onChange={setIncVal} type="number" />
-                        <InputField label="Extra Duty (Ex-VAT) £" value={duty} onChange={setDuty} type="number" />
-                        <InputField label="Half Surcharge £" value={halfPrem} onChange={setHalfPrem} type="number" />
+                        <div className="grid grid-cols-2 gap-4">
+                            <SelectField label="Increase Type" value={incType} onChange={setIncType} options={["Percentage (%)", "Fixed £ Barrel", "Fixed £ Gallon"]} />
+                            <InputField label="Increase (Ex-VAT)" value={incVal} onChange={setIncVal} type="number" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <InputField label="Extra Duty (Ex-VAT)" value={duty} onChange={setDuty} type="number" />
+                            <InputField label="Half Surcharge £" value={halfPrem} onChange={setHalfPrem} type="number" />
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <button
-                onClick={calculate}
-                className="w-full bg-slate-700 text-white font-bold py-4 rounded-xl hover:bg-slate-600 transition-colors shadow-lg shadow-slate-200"
-            >
-                RUN CALCULATION LITE
-            </button>
 
-            {result && (
-                <div className="bg-slate-50 border border-slate-200 p-6 rounded-xl text-center">
-                    <h4 className="text-slate-500 font-semibold mb-2">Results</h4>
-                    <p className="text-lg">New Total Barrel Cost: <strong>£{result.newTotal.toFixed(2)}</strong></p>
-                    <div className="flex flex-col md:flex-row justify-center gap-8 mt-4 text-2xl font-bold text-slate-800">
-                        <div className="flex flex-col items-center">
-                            <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">Recommended Pint</span>
-                            <span>£{result.pint.toFixed(2)}</span>
-                            {result.currentGP !== null && (
-                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded mt-1">
-                                    Target: {gp}%
+
+            {
+                result && (
+                    <div className="bg-slate-50 border border-slate-200 p-6 rounded-xl text-center">
+                        <h4 className="text-slate-500 font-semibold mb-2">Results</h4>
+                        <p className="text-lg">New Total Barrel Cost: <strong>£{result.newTotal.toFixed(2)}</strong></p>
+                        <div className="flex flex-col md:flex-row justify-center gap-8 mt-4 text-2xl font-bold text-slate-800">
+                            <div className="flex flex-col items-center">
+                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">Recommended Pint</span>
+                                <span>£{result.pint.toFixed(2)}</span>
+                                {result.currentGP !== null && (
+                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded mt-1">
+                                        Target: {gp}%
+                                    </span>
+                                )}
+                            </div>
+                            <div className="hidden md:block w-px bg-slate-200"></div>
+                            <div className="flex flex-col items-center">
+                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">Current Pint</span>
+                                <span className={`${result.currentGP !== null ? "text-slate-600" : "text-slate-300"}`}>
+                                    {currentPrice ? `£${parseFloat(currentPrice).toFixed(2)}` : "-"}
                                 </span>
-                            )}
+                                {result.currentGP !== null && (
+                                    <span className={`text-xs px-2 py-1 rounded mt-1 ${result.currentGP < parseFloat(gp) ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+                                        Actual: {result.currentGP.toFixed(1)}%
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                        <div className="hidden md:block w-px bg-slate-200"></div>
-                        <div className="flex flex-col items-center">
-                            <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">Current Pint</span>
-                            <span className={`${result.currentGP !== null ? "text-slate-600" : "text-slate-300"}`}>
-                                {currentPrice ? `£${parseFloat(currentPrice).toFixed(2)}` : "-"}
-                            </span>
-                            {result.currentGP !== null && (
-                                <span className={`text-xs px-2 py-1 rounded mt-1 ${result.currentGP < parseFloat(gp) ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
-                                    Actual: {result.currentGP.toFixed(1)}%
-                                </span>
-                            )}
-                        </div>
+
+
                     </div>
-
-                    {result.profitLeak !== null && result.profitLeak > 0 && (
-                        <div className="mt-6 bg-red-50 border border-red-100 p-4 rounded-lg">
-                            <p className="text-red-600 font-bold uppercase text-xs tracking-wider mb-1">Annualized Profit Leak</p>
-                            <p className="text-3xl font-black text-red-700">£{result.profitLeak.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                            <p className="text-xs text-red-400 mt-1">Potential lost profit based on current volume</p>
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 
@@ -323,7 +312,7 @@ const SpiritsCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
 
     // Reality Check
     const [currentPrice25, setCurrentPrice25] = useState("");
-    const [volume, setVolume] = useState("");
+
 
     useEffect(() => {
         if (initialData && initialData.type === "Spirits") {
@@ -337,7 +326,6 @@ const SpiritsCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
             if (d["Increase Value"]) setIncVal(d["Increase Value"]);
             // New fields
             if (d["Current 25ml Price"]) setCurrentPrice25(d["Current 25ml Price"].replace(/[£,]/g, ""));
-            if (d["Weekly Volume"]) setVolume(d["Weekly Volume"]);
         }
     }, [initialData]);
 
@@ -352,7 +340,6 @@ const SpiritsCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
         price25: number;
         price50: number;
         currentGP: number | null;
-        profitLeak: number | null;
     }>(null);
 
     const calculate = () => {
@@ -384,24 +371,14 @@ const SpiritsCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
 
         // --- Reality Check ---
         const curr25 = parseFloat(currentPrice25) || 0;
-        const wkVol = parseFloat(volume) || 0;
+
 
         let currentGP = null;
-        let profitLeak = null;
+
 
         if (curr25 > 0) {
             const netSales25 = curr25 / 1.2;
             currentGP = ((netSales25 - cost25) / netSales25) * 100;
-
-            // Profit Leak
-            const potentialNet25 = sale25 / 1.2;
-            const diffNet25 = potentialNet25 - netSales25;
-
-            if (wkVol > 0) {
-                // Measures per bottle
-                const measuresPerBtl = mlTotal / 25;
-                profitLeak = diffNet25 * measuresPerBtl * wkVol * 52;
-            }
         }
 
         setResult({
@@ -409,7 +386,6 @@ const SpiritsCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
             price25: sale25,
             price50: sale50,
             currentGP: currentGP,
-            profitLeak: profitLeak
         });
 
         const item: CalculationItem = {
@@ -428,8 +404,6 @@ const SpiritsCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                 "Current GP": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
                 "Recommended 25ml": `£${sale25.toFixed(2)}`,
                 "Recommended 50ml": `£${sale50.toFixed(2)}`,
-                "Weekly Volume": wkVol > 0 ? `${wkVol}` : "-",
-                "Annualized Profit Leak": profitLeak !== null ? `£${profitLeak.toFixed(2)}` : "-",
             },
         };
         onSave(item);
@@ -437,40 +411,46 @@ const SpiritsCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Current Pricing</h3>
-                    <div className="space-y-4">
-                        <InputField label="Product Name" value={name} onChange={setName} />
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Product Details</h3>
+                    <button
+                        onClick={calculate}
+                        className="bg-slate-700 text-white text-xs font-bold py-2 px-4 rounded-lg hover:bg-slate-600 transition-colors shadow-lg shadow-slate-200"
+                    >
+                        CALCULATE
+                    </button>
+                </div>
+                <div className="space-y-4">
+                    <InputField label="Product Name" value={name} onChange={setName} />
+                    <div className="grid grid-cols-3 gap-4">
                         <SelectField label="Size" value={size} onChange={setSize} options={["70cl", "75cl", "100cl", "150cl"]} />
                         <InputField label="Btl Cost (Ex-VAT) £" value={cost} onChange={setCost} type="number" />
                         <InputField label="Target GP %" value={gp} onChange={setGp} type="number" />
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 className="text-sm font-bold text-blue-500 uppercase tracking-wider mb-4">Reality Check</h3>
+                    <div className="space-y-4">
+                        <InputField label="Current 25ml Price (Inc-VAT) £" value={currentPrice25} onChange={setCurrentPrice25} type="number" />
                     </div>
                 </div>
 
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider mb-4">Increase</h3>
                     <div className="space-y-4">
-                        <SelectField label="Increase Type" value={incType} onChange={setIncType} options={["Percentage (%)", "Fixed £ Bottle"]} />
-                        <InputField label="Increase (Ex-VAT)" value={incVal} onChange={setIncVal} type="number" />
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h3 className="text-sm font-bold text-blue-500 uppercase tracking-wider mb-4">Reality Check</h3>
-                    <div className="space-y-4">
-                        <InputField label="Current 25ml Price (Inc-VAT) £" value={currentPrice25} onChange={setCurrentPrice25} type="number" />
-                        <InputField label="Weekly Volume (Bottles)" value={volume} onChange={setVolume} type="number" />
+                        <div className="grid grid-cols-2 gap-4">
+                            <SelectField label="Increase Type" value={incType} onChange={setIncType} options={["Percentage (%)", "Fixed £ Bottle"]} />
+                            <InputField label="Increase (Ex-VAT)" value={incVal} onChange={setIncVal} type="number" />
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <button
-                onClick={calculate}
-                className="w-full bg-slate-700 text-white font-bold py-4 rounded-xl hover:bg-slate-600 transition-colors shadow-lg shadow-slate-200"
-            >
-                RUN CALCULATION LITE
-            </button>
+
 
             {result && (
                 <div className="bg-slate-50 border border-slate-200 p-6 rounded-xl text-center">
@@ -500,12 +480,7 @@ const SpiritsCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                         </div>
                     </div>
 
-                    {result.profitLeak !== null && result.profitLeak > 0 && (
-                        <div className="mt-6 bg-red-50 border border-red-100 p-4 rounded-lg">
-                            <p className="text-red-600 font-bold uppercase text-xs tracking-wider mb-1">Annualized Profit Leak</p>
-                            <p className="text-3xl font-black text-red-700">£{result.profitLeak.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                        </div>
-                    )}
+
                 </div>
             )}
         </div>
@@ -526,7 +501,7 @@ const WineCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calculati
     const [currentPrice250, setCurrentPrice250] = useState("");
     const [currentPrice175, setCurrentPrice175] = useState("");
     const [currentPrice125, setCurrentPrice125] = useState("");
-    const [volume, setVolume] = useState("");
+
 
     useEffect(() => {
         if (initialData && initialData.type === "Wine") {
@@ -542,7 +517,6 @@ const WineCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calculati
             if (d["Current 250ml Price"]) setCurrentPrice250(d["Current 250ml Price"].replace(/[£,]/g, ""));
             if (d["Current 175ml Price"]) setCurrentPrice175(d["Current 175ml Price"].replace(/[£,]/g, ""));
             if (d["Current 125ml Price"]) setCurrentPrice125(d["Current 125ml Price"].replace(/[£,]/g, ""));
-            if (d["Weekly Volume"]) setVolume(d["Weekly Volume"]);
         }
     }, [initialData]);
 
@@ -558,7 +532,6 @@ const WineCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calculati
         m175: number;
         m125: number;
         currentGP: number | null;
-        profitLeak: number | null;
     }>(null);
 
     const calculate = () => {
@@ -595,28 +568,19 @@ const WineCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calculati
 
         // --- Reality Check ---
         const currBtl = parseFloat(currentPriceBtl) || 0;
-        const wkVol = parseFloat(volume) || 0;
+
 
         let currentGP = null;
-        let profitLeak = null;
+
 
         if (currBtl > 0) {
             const netSalesBtl = currBtl / 1.2;
             currentGP = ((netSalesBtl - currCost) / netSalesBtl) * 100;
-
-            // Profit Leak (based on Bottle turnover)
-            const potentialNetBtl = btlPrice / 1.2;
-            const diffNetBtl = potentialNetBtl - netSalesBtl;
-
-            if (wkVol > 0) {
-                profitLeak = diffNetBtl * wkVol * 52;
-            }
         }
 
         setResult({
             btlPrice, m250, m175, m125,
             currentGP: currentGP,
-            profitLeak: profitLeak
         });
 
         const item: CalculationItem = {
@@ -639,8 +603,6 @@ const WineCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calculati
                 "Recommended 250ml": `£${m250.toFixed(2)}`,
                 "Recommended 175ml": `£${m175.toFixed(2)}`,
                 "Recommended 125ml": `£${m125.toFixed(2)}`,
-                "Weekly Volume": wkVol > 0 ? `${wkVol}` : "-",
-                "Annualized Profit Leak": profitLeak !== null ? `£${profitLeak.toFixed(2)}` : "-",
             },
         };
         onSave(item);
@@ -648,24 +610,26 @@ const WineCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calculati
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Current Pricing</h3>
-                    <div className="space-y-4">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Product Details</h3>
+                    <button
+                        onClick={calculate}
+                        className="bg-slate-700 text-white text-xs font-bold py-2 px-4 rounded-lg hover:bg-slate-600 transition-colors shadow-lg shadow-slate-200"
+                    >
+                        CALCULATE
+                    </button>
+                </div>
+                <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
                         <InputField label="Product Name" value={name} onChange={setName} />
                         <InputField label="Btl Cost (Ex-VAT) £" value={cost} onChange={setCost} type="number" />
                         <InputField label="Target GP %" value={gp} onChange={setGp} type="number" />
                     </div>
                 </div>
+            </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider mb-4">Increase</h3>
-                    <div className="space-y-4">
-                        <SelectField label="Increase Type" value={incType} onChange={setIncType} options={["Percentage (%)", "Fixed £ Bottle"]} />
-                        <InputField label="Increase (Ex-VAT)" value={incVal} onChange={setIncVal} type="number" />
-                    </div>
-                </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <h3 className="text-sm font-bold text-blue-500 uppercase tracking-wider mb-4">Reality Check</h3>
                     <div className="space-y-4">
@@ -675,17 +639,19 @@ const WineCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calculati
                             <InputField label="175ml" value={currentPrice175} onChange={setCurrentPrice175} type="number" />
                             <InputField label="125ml" value={currentPrice125} onChange={setCurrentPrice125} type="number" />
                         </div>
-                        <InputField label="Weekly Volume (Bottles)" value={volume} onChange={setVolume} type="number" />
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 className="text-sm font-bold text-red-500 uppercase tracking-wider mb-4">Increase Forecast</h3>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <SelectField label="Increase Type" value={incType} onChange={setIncType} options={["Percentage (%)", "Fixed £ Bottle"]} />
+                            <InputField label="Increase (Ex-VAT)" value={incVal} onChange={setIncVal} type="number" />
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <button
-                onClick={calculate}
-                className="w-full bg-slate-700 text-white font-bold py-4 rounded-xl hover:bg-slate-600 transition-colors shadow-lg shadow-slate-200"
-            >
-                RUN CALCULATION LITE
-            </button>
 
             {result && (
                 <div className="bg-slate-50 border border-slate-200 p-6 rounded-xl text-center">
@@ -718,13 +684,7 @@ const WineCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calculati
                         </div>
                     )}
 
-                    {result.profitLeak !== null && result.profitLeak > 0 && (
-                        <div className="mt-6 bg-red-50 border border-red-100 p-4 rounded-lg">
-                            <p className="text-red-600 font-bold uppercase text-xs tracking-wider mb-1">Annualized Profit Leak</p>
-                            <p className="text-3xl font-black text-red-700">£{result.profitLeak.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                            <p className="text-xs text-red-400 mt-1">Potential lost profit based on Bottle variance</p>
-                        </div>
-                    )}
+
                 </div>
             )}
         </div>
@@ -741,7 +701,6 @@ const SoftDrinksCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Cal
 
     // Reality Check
     const [currentPrice, setCurrentPrice] = useState("");
-    const [volume, setVolume] = useState("");
 
     useEffect(() => {
         if (initialData && initialData.type === "Soft Drinks") {
@@ -753,7 +712,6 @@ const SoftDrinksCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Cal
             if (d["Target GP"]) setGp(d["Target GP"].replace(/[%]/g, ""));
 
             if (d["Current Sell Price"]) setCurrentPrice(d["Current Sell Price"].replace(/[£,]/g, ""));
-            if (d["Weekly Volume"]) setVolume(d["Weekly Volume"]);
         }
     }, [initialData]);
 
@@ -767,7 +725,6 @@ const SoftDrinksCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Cal
         unitCost: number;
         unitRRP: number;
         currentGP: number | null;
-        profitLeak: number | null;
     }>(null);
 
     const calculate = () => {
@@ -787,35 +744,23 @@ const SoftDrinksCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Cal
 
         // --- Reality Check ---
         const currSell = parseFloat(currentPrice) || 0;
-        const wkVol = parseFloat(volume) || 0;
 
         let currentGP = null;
-        let profitLeak = null;
 
         if (currSell > 0) {
             const netSales = currSell / 1.2;
             currentGP = ((netSales - unitCost) / netSales) * 100;
-
-            // Profit Leak 
-            const potentialNet = unitRRP / 1.2;
-            const diffNet = potentialNet - netSales;
-
-            if (wkVol > 0) {
-                // Volume is units per week
-                profitLeak = diffNet * wkVol * 52;
-            }
         }
 
         setResult({
             unitCost,
             unitRRP,
             currentGP,
-            profitLeak
         });
 
         const item: CalculationItem = {
             id: Date.now().toString(),
-            type: "Soft Drinks" as any, // Cast because "Soft Drinks" is not yet in type definition
+            type: "Soft Drinks" as any,
             product: prodName,
             timestamp: new Date().toISOString(),
             details: {
@@ -827,8 +772,6 @@ const SoftDrinksCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Cal
                 "Recommended Price": `£${unitRRP.toFixed(2)}`,
                 "Current Sell Price": currSell > 0 ? `£${currSell.toFixed(2)}` : "-",
                 "Current GP": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
-                "Weekly Volume": wkVol > 0 ? `${wkVol}` : "-",
-                "Annualized Profit Leak": profitLeak !== null ? `£${profitLeak.toFixed(2)}` : "-",
             },
         };
         onSave(item);
@@ -836,35 +779,35 @@ const SoftDrinksCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Cal
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Costings</h3>
-                    <div className="space-y-4">
-                        <InputField label="Product Name" value={name} onChange={setName} />
-                        <div className="grid grid-cols-2 gap-4">
-                            <InputField label="Case Size" value={caseSize} onChange={setCaseSize} type="number" />
-                            <InputField label="Unit Size (e.g. 330ml)" value={unitSize} onChange={setUnitSize} />
-                        </div>
-                        <InputField label="Case Cost (Ex-VAT) £" value={caseCost} onChange={setCaseCost} type="number" />
-                        <InputField label="Target GP %" value={gp} onChange={setGp} type="number" />
-                    </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Product Details</h3>
+                    <button
+                        onClick={calculate}
+                        className="bg-slate-700 text-white text-xs font-bold py-2 px-4 rounded-lg hover:bg-slate-600 transition-colors shadow-lg shadow-slate-200"
+                    >
+                        CALCULATE
+                    </button>
                 </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h3 className="text-sm font-bold text-blue-500 uppercase tracking-wider mb-4">Reality Check</h3>
-                    <div className="space-y-4">
-                        <InputField label="Current Unit Sell Price (Inc-VAT) £" value={currentPrice} onChange={setCurrentPrice} type="number" />
-                        <InputField label="Weekly Volume (Units)" value={volume} onChange={setVolume} type="number" />
+                <div className="space-y-4">
+                    <InputField label="Product Name" value={name} onChange={setName} />
+                    <div className="grid grid-cols-4 gap-4">
+                        <InputField label="Case Size" value={caseSize} onChange={setCaseSize} type="number" />
+                        <InputField label="Unit Size" value={unitSize} onChange={setUnitSize} />
+                        <InputField label="Case Cost £" value={caseCost} onChange={setCaseCost} type="number" />
+                        <InputField label="Target GP %" value={gp} onChange={setGp} type="number" />
                     </div>
                 </div>
             </div>
 
-            <button
-                onClick={calculate}
-                className="w-full bg-slate-700 text-white font-bold py-4 rounded-xl hover:bg-slate-600 transition-colors shadow-lg shadow-slate-200"
-            >
-                RUN CALCULATION LITE
-            </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 className="text-sm font-bold text-blue-500 uppercase tracking-wider mb-4">Reality Check</h3>
+                    <div className="space-y-4">
+                        <InputField label="Current Unit Price (Inc-VAT)" value={currentPrice} onChange={setCurrentPrice} type="number" />
+                    </div>
+                </div>
+            </div>
 
             {result && (
                 <div className="bg-slate-50 border border-slate-200 p-6 rounded-xl text-center">
@@ -894,13 +837,6 @@ const SoftDrinksCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Cal
                             )}
                         </div>
                     </div>
-
-                    {result.profitLeak !== null && result.profitLeak > 0 && (
-                        <div className="mt-6 bg-red-50 border border-red-100 p-4 rounded-lg">
-                            <p className="text-red-600 font-bold uppercase text-xs tracking-wider mb-1">Annualized Profit Leak</p>
-                            <p className="text-3xl font-black text-red-700">£{result.profitLeak.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                        </div>
-                    )}
                 </div>
             )}
         </div>
@@ -917,7 +853,6 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
 
     // Reality Check
     const [currentPintPrice, setCurrentPintPrice] = useState("");
-    const [volume, setVolume] = useState(""); // BIBs per week
 
     useEffect(() => {
         if (initialData && initialData.type === "Post Mix") {
@@ -929,7 +864,6 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
             if (d["Target GP"]) setGp(d["Target GP"].replace(/[%]/g, ""));
 
             if (d["Current Pint Price"]) setCurrentPintPrice(d["Current Pint Price"].replace(/[£,]/g, ""));
-            if (d["Weekly Volume"]) setVolume(d["Weekly Volume"]);
         }
     }, [initialData]);
 
@@ -946,7 +880,6 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
         soda16oz: number;
         dash: number;
         currentGP: number | null;
-        profitLeak: number | null;
     }>(null);
 
     const calculate = () => {
@@ -967,8 +900,8 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
         // Measures
         const mlPint = 568;
         const mlHalf = 284;
-        const ml16oz = 454; // Approx 16 Imperial oz
-        const mlDash = 50;  // Standard dash/splash
+        const ml16oz = 454;
+        const mlDash = 50;
 
         // Prices
         const calcPrice = (ml: number) => smartRound(((costPerMl * ml) / (1 - targetGp / 100)) * 1.20);
@@ -980,26 +913,13 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
 
         // --- Reality Check ---
         const currPint = parseFloat(currentPintPrice) || 0;
-        const wkVol = parseFloat(volume) || 0;
 
         let currentGP = null;
-        let profitLeak = null;
 
         if (currPint > 0) {
             const netSalesPint = currPint / 1.2;
             const costPint = costPerMl * mlPint;
             currentGP = ((netSalesPint - costPint) / netSalesPint) * 100;
-
-            // Profit Leak based on Pint yield
-            const potentialNetPint = pPint / 1.2;
-            const diffNetPint = potentialNetPint - netSalesPint;
-
-            if (wkVol > 0) {
-                // Volume is BIBs per week.
-                // How many pints in a BIB?
-                const pintsInBib = totalLiquidMl / mlPint;
-                profitLeak = diffNetPint * pintsInBib * wkVol * 52;
-            }
         }
 
         setResult({
@@ -1008,8 +928,7 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
             half: pHalf,
             soda16oz: p16oz,
             dash: pDash,
-            currentGP,
-            profitLeak
+            currentGP
         });
 
         const item: CalculationItem = {
@@ -1028,8 +947,6 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                 "Recommended Dash": `£${pDash.toFixed(2)}`,
                 "Current Pint Price": currPint > 0 ? `£${currPint.toFixed(2)}` : "-",
                 "Current GP (Pint)": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
-                "Weekly Volume (BIBs)": wkVol > 0 ? `${wkVol}` : "-",
-                "Annualized Profit Leak": profitLeak !== null ? `£${profitLeak.toFixed(2)}` : "-",
             },
         };
         onSave(item);
@@ -1037,35 +954,35 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Costings</h3>
-                    <div className="space-y-4">
-                        <InputField label="Product Name" value={name} onChange={setName} />
-                        <div className="grid grid-cols-2 gap-4">
-                            <InputField label="BIB Size (Litres)" value={bibSize} onChange={setBibSize} type="number" />
-                            <InputField label="Dilution Ratio (X:1)" value={ratio} onChange={setRatio} type="number" />
-                        </div>
-                        <InputField label="BIB Cost (Ex-VAT) £" value={bibCost} onChange={setBibCost} type="number" />
-                        <InputField label="Target GP %" value={gp} onChange={setGp} type="number" />
-                    </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Product Details</h3>
+                    <button
+                        onClick={calculate}
+                        className="bg-slate-700 text-white text-xs font-bold py-2 px-4 rounded-lg hover:bg-slate-600 transition-colors shadow-lg shadow-slate-200"
+                    >
+                        CALCULATE
+                    </button>
                 </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h3 className="text-sm font-bold text-blue-500 uppercase tracking-wider mb-4">Reality Check</h3>
-                    <div className="space-y-4">
-                        <InputField label="Current Pint Price (Inc-VAT) £" value={currentPintPrice} onChange={setCurrentPintPrice} type="number" />
-                        <InputField label="Weekly Volume (BIBs)" value={volume} onChange={setVolume} type="number" />
+                <div className="space-y-4">
+                    <InputField label="Product Name" value={name} onChange={setName} />
+                    <div className="grid grid-cols-4 gap-4">
+                        <InputField label="BIB Size (L)" value={bibSize} onChange={setBibSize} type="number" />
+                        <InputField label="Ratio (X:1)" value={ratio} onChange={setRatio} type="number" />
+                        <InputField label="BIB Cost £" value={bibCost} onChange={setBibCost} type="number" />
+                        <InputField label="Target GP %" value={gp} onChange={setGp} type="number" />
                     </div>
                 </div>
             </div>
 
-            <button
-                onClick={calculate}
-                className="w-full bg-slate-700 text-white font-bold py-4 rounded-xl hover:bg-slate-600 transition-colors shadow-lg shadow-slate-200"
-            >
-                RUN CALCULATION LITE
-            </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h3 className="text-sm font-bold text-blue-500 uppercase tracking-wider mb-4">Reality Check</h3>
+                    <div className="space-y-4">
+                        <InputField label="Current Pint Price (Inc-VAT) £" value={currentPintPrice} onChange={setCurrentPintPrice} type="number" />
+                    </div>
+                </div>
+            </div>
 
             {result && (
                 <div className="bg-slate-50 border border-slate-200 p-6 rounded-xl text-center">
@@ -1095,14 +1012,6 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                             <span>£{result.dash.toFixed(2)}</span>
                         </div>
                     </div>
-
-                    {result.profitLeak !== null && result.profitLeak > 0 && (
-                        <div className="mt-6 bg-red-50 border border-red-100 p-4 rounded-lg">
-                            <p className="text-red-600 font-bold uppercase text-xs tracking-wider mb-1">Annualized Profit Leak</p>
-                            <p className="text-3xl font-black text-red-700">£{result.profitLeak.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                            <p className="text-xs text-red-400 mt-1">Based on Pint yield variance</p>
-                        </div>
-                    )}
                 </div>
             )}
         </div>
@@ -1364,8 +1273,8 @@ export default function GPCalculatorPage() {
                             <img src="/logo.png" alt="Whole Hospitality" className="object-contain h-full w-full" />
                         </div>
                         <div>
-                            <h1 className="text-5xl font-black uppercase tracking-tight text-slate-900">Reality Check</h1>
-                            <p className="text-xl text-slate-500 font-medium tracking-widest uppercase mt-1">Margin Strategy Report</p>
+                            <h1 className="text-5xl font-black uppercase tracking-tight text-slate-900">GP Report</h1>
+                            <p className="text-xl text-slate-500 font-medium tracking-widest uppercase mt-1">Profitability & Pricing</p>
                         </div>
                     </div>
                     <div className="text-right">
@@ -1396,10 +1305,11 @@ export default function GPCalculatorPage() {
                                         <tr className="border-b border-slate-200 text-slate-400 text-xs uppercase tracking-wider">
                                             <th className="py-2 font-medium">Product</th>
                                             <th className="py-2 font-medium">Measure</th>
-                                            <th className="py-2 font-medium text-right">Current Price</th>
-                                            <th className="py-2 font-medium text-right text-blue-600">Target Price</th>
-                                            <th className="py-2 font-medium text-right">Variance</th>
-                                            <th className="py-2 font-medium text-right text-red-600">Annual Leak</th>
+                                            <th className="py-2 font-medium text-right">Cost (Ex)</th>
+                                            <th className="py-2 font-medium text-right">Target GP</th>
+                                            <th className="py-2 font-medium text-right">Current (Inc)</th>
+                                            <th className="py-2 font-medium text-right text-blue-600">Rec (Inc)</th>
+                                            <th className="py-2 font-medium text-right">Var</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -1408,29 +1318,35 @@ export default function GPCalculatorPage() {
                                             let measure = "-";
                                             let current = "-";
                                             let recommended = "-";
+                                            let cost = "-";
+                                            let targetGp = item.details["Target GP"] || "-";
                                             const d = item.details;
 
                                             if (type === "Draught") {
                                                 measure = "Pint";
                                                 current = d["Current Sell Price"];
                                                 recommended = d["Recommended Pint"];
+                                                cost = d["New Total Cost (Ex-VAT)"];
                                             } else if (type === "Spirits") {
                                                 measure = "25ml";
                                                 current = d["Current 25ml Price"];
                                                 recommended = d["Recommended 25ml"];
+                                                cost = d["Bottle Size"] + " @ " + d["New Bottle Cost (Ex-VAT)"];
                                             } else if (type === "Wine") {
                                                 measure = "Bottle";
                                                 current = d["Current Bottle Price"];
                                                 recommended = d["Recommended Bottle"];
-                                                // Note: Could list glasses, but keeping it simple for summary
+                                                cost = d["New Btl Cost (Ex-VAT)"];
                                             } else if (type === "Soft Drinks") {
                                                 measure = d["Unit Size"] || "Unit";
                                                 current = d["Current Sell Price"];
                                                 recommended = d["Recommended Price"];
+                                                cost = d["Unit Cost (Ex-VAT)"];
                                             } else if (type === "Post Mix") {
                                                 measure = "Pint";
                                                 current = d["Current Pint Price"];
                                                 recommended = d["Recommended Pint"];
+                                                cost = "BIB: " + d["BIB Cost (Ex-VAT)"];
                                             }
 
                                             // Calc Variance
@@ -1446,28 +1362,15 @@ export default function GPCalculatorPage() {
                                                 }
                                             }
 
-                                            // GP Actual
-                                            const actGp = d["Current GP"] || d["Current GP (Btl)"] || d["Current GP (Pint)"];
-
-                                            // Leak
-                                            const leak = d["Annualized Profit Leak"];
-
                                             return (
                                                 <tr key={item.id} className="group">
                                                     <td className="py-3 font-bold text-slate-800">{item.product}</td>
                                                     <td className="py-3 text-slate-500">{measure}</td>
-                                                    <td className="py-3 text-right">
-                                                        <div className="font-medium text-slate-700">{current}</div>
-                                                        {actGp && actGp !== "-" && <div className="text-[10px] text-slate-400">GP: {actGp}</div>}
-                                                    </td>
-                                                    <td className="py-3 text-right">
-                                                        <div className="font-bold text-blue-600">{recommended}</div>
-                                                        <div className="text-[10px] text-blue-400">Target: {currentGlobalTarget}%</div>
-                                                    </td>
+                                                    <td className="py-3 text-right text-slate-600">{cost}</td>
+                                                    <td className="py-3 text-right text-slate-600">{targetGp}</td>
+                                                    <td className="py-3 text-right font-medium text-slate-700">{current}</td>
+                                                    <td className="py-3 text-right font-bold text-blue-600">{recommended}</td>
                                                     <td className={`py-3 text-right ${varClass}`}>{variance}</td>
-                                                    <td className={`py-3 text-right font-bold ${leak && leak !== "-" ? "text-red-600" : "text-slate-300"}`}>
-                                                        {leak}
-                                                    </td>
                                                 </tr>
                                             );
                                         })}
@@ -1483,25 +1386,8 @@ export default function GPCalculatorPage() {
                     <div>
                         <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-2">Notes</p>
                         <p className="text-xs text-slate-500 leading-relaxed">
-                            This report calculates potential revenue uplift based on the selected target GP of <strong>{currentGlobalTarget}%</strong>.
-                            "Annualized Profit Leak" estimates the lost potential profit over 52 weeks based on current stated volumes and price variance.
-                            All costs are Ex-VAT. All Sell Prices are Inc-VAT (20%).
+                            Please ensure all input costs are accurate as they directly affect the target price.
                         </p>
-                    </div>
-                    <div className="text-right">
-                        <div className="inline-block">
-                            <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Total Estimated Leak</p>
-                            <p className="text-4xl font-black text-red-600">
-                                £{history.reduce((acc, item) => {
-                                    const leak = item.details["Annualized Profit Leak"];
-                                    if (leak && leak !== "-") {
-                                        return acc + parseFloat(leak.replace(/[£,]/g, ""));
-                                    }
-                                    return acc;
-                                }, 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </p>
-                            <p className="text-xs text-red-400 mt-1">Annual Potential Uplift</p>
-                        </div>
                     </div>
                 </div>
 
@@ -1513,6 +1399,6 @@ export default function GPCalculatorPage() {
             <footer className="print:hidden text-center text-slate-400 text-sm mt-8">
                 © 2026 Whole Hospitality | Professional Backend Solutions
             </footer>
-        </div>
+        </div >
     );
 }
