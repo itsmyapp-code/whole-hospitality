@@ -1106,6 +1106,11 @@ export default function GPCalculatorPage() {
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
+    // Helper: Only pass loaded item if it matches the current calculator type
+    const getInitialData = (type: string) => {
+        return itemToLoad && itemToLoad.type === type ? itemToLoad : null;
+    };
+
     return (
         <div className="min-h-screen bg-[#f5f5f7] font-sans pb-20">
             <Head>
@@ -1219,11 +1224,11 @@ export default function GPCalculatorPage() {
                             </div>
                         )}
 
-                        {activeTab === "Draught" && <DraughtCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget["Draught"]} />}
-                        {activeTab === "Spirits" && <SpiritsCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget["Spirits"]} />}
-                        {activeTab === "Wine" && <WineCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget["Wine"]} />}
-                        {activeTab === "Soft Drinks" && <SoftDrinksCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget["Soft Drinks"]} />}
-                        {activeTab === "Post Mix" && <PostMixCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget["Post Mix"]} />}
+                        {activeTab === "Draught" && <DraughtCalc onSave={addToHistory} initialData={getInitialData("Draught")} defaultGP={currentGlobalTarget["Draught"]} />}
+                        {activeTab === "Spirits" && <SpiritsCalc onSave={addToHistory} initialData={getInitialData("Spirits")} defaultGP={currentGlobalTarget["Spirits"]} />}
+                        {activeTab === "Wine" && <WineCalc onSave={addToHistory} initialData={getInitialData("Wine")} defaultGP={currentGlobalTarget["Wine"]} />}
+                        {activeTab === "Soft Drinks" && <SoftDrinksCalc onSave={addToHistory} initialData={getInitialData("Soft Drinks")} defaultGP={currentGlobalTarget["Soft Drinks"]} />}
+                        {activeTab === "Post Mix" && <PostMixCalc onSave={addToHistory} initialData={getInitialData("Post Mix")} defaultGP={currentGlobalTarget["Post Mix"]} />}
                     </div>
                 </div>
 
@@ -1257,12 +1262,40 @@ export default function GPCalculatorPage() {
                                             </button>
                                         </div>
                                         <div className="text-slate-500 text-xs space-y-1">
-                                            {Object.entries(item.details).slice(0, 3).map(([k, v]) => (
-                                                <div key={k} className="flex justify-between">
-                                                    <span>{k}:</span>
-                                                    <span className="font-medium text-slate-700">{v}</span>
-                                                </div>
-                                            ))}
+                                            {/* Smart Display based on Type */}
+                                            {(() => {
+                                                const d = item.details;
+                                                const fields = [];
+
+                                                if (item.type === "Draught") {
+                                                    fields.push(["Rec Pint", d["Recommended Pint"]]);
+                                                    fields.push(["Target GP", d["Target GP"]]);
+                                                    if (d["Current GP"]) fields.push(["Actual GP", d["Current GP"]]);
+                                                } else if (item.type === "Spirits") {
+                                                    fields.push(["Rec 25ml", d["Recommended 25ml"]]);
+                                                    fields.push(["Target GP", d["Target GP"]]);
+                                                    if (d["Current GP"]) fields.push(["Actual GP", d["Current GP"]]);
+                                                } else if (item.type === "Wine") {
+                                                    fields.push(["Rec Bottle", d["Recommended Bottle"]]);
+                                                    fields.push(["Rec 250ml", d["Recommended 250ml"]]);
+                                                    fields.push(["Target GP", d["Target GP"]]);
+                                                } else if (item.type === "Soft Drinks") {
+                                                    fields.push(["Rec Price", d["Recommended Price"]]);
+                                                    fields.push(["Target GP", d["Target GP"]]);
+                                                    if (d["Current GP"]) fields.push(["Actual GP", d["Current GP"]]);
+                                                } else if (item.type === "Post Mix") {
+                                                    fields.push(["Rec Pint", d["Recommended Pint"]]);
+                                                    fields.push(["Target GP", d["Target GP"]]);
+                                                    if (d["Current GP (Pint)"]) fields.push(["Actual GP", d["Current GP (Pint)"]]);
+                                                }
+
+                                                return fields.map(([k, v]) => (
+                                                    <div key={k} className="flex justify-between">
+                                                        <span>{k}:</span>
+                                                        <span className="font-medium text-slate-700">{v}</span>
+                                                    </div>
+                                                ));
+                                            })()}
                                         </div>
                                     </div>
                                 ))
