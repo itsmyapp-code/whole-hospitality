@@ -286,6 +286,11 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                             </div>
                             <div className="hidden md:block w-px bg-slate-200"></div>
                             <div className="flex flex-col items-center">
+                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">Recommended Half</span>
+                                <span>£{result.half.toFixed(2)}</span>
+                            </div>
+                            <div className="hidden md:block w-px bg-slate-200"></div>
+                            <div className="flex flex-col items-center">
                                 <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">Current Pint</span>
                                 <span className={`${result.currentGP !== null ? "text-slate-600" : "text-slate-300"}`}>
                                     {currentPrice ? `£${parseFloat(currentPrice).toFixed(2)}` : "-"}
@@ -1259,6 +1264,7 @@ export default function GPCalculatorPage() {
 
                                                 if (item.type === "Draught") {
                                                     fields.push(["Rec Pint", d["Recommended Pint"]]);
+                                                    fields.push(["Rec Half", d["Recommended Half"]]);
                                                     fields.push(["Target GP", d["Target GP"]]);
                                                     if (d["Current GP"]) fields.push(["Actual GP", d["Current GP"]]);
                                                 } else if (item.type === "Spirits") {
