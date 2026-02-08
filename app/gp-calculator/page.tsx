@@ -107,10 +107,8 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
     // Constructive/Destructive? If user has manually typed a GP, this overwrites it if global setting changes.
     // This is "Industry Standard" toggle behavior.
     useEffect(() => {
-        if (!initialData) {
-            setGp(defaultGP.toString());
-        }
-    }, [defaultGP, initialData]);
+        setGp(defaultGP.toString());
+    }, [defaultGP]);
 
     const [result, setResult] = useState<null | {
         newTotal: number;
@@ -338,10 +336,8 @@ const SpiritsCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
     }, [initialData]);
 
     useEffect(() => {
-        if (!initialData) {
-            setGp(defaultGP.toString());
-        }
-    }, [defaultGP, initialData]);
+        setGp(defaultGP.toString());
+    }, [defaultGP]);
 
     const [result, setResult] = useState<null | {
         newCost: number;
@@ -529,10 +525,8 @@ const WineCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calculati
     }, [initialData]);
 
     useEffect(() => {
-        if (!initialData) {
-            setGp(defaultGP.toString());
-        }
-    }, [defaultGP, initialData]);
+        setGp(defaultGP.toString());
+    }, [defaultGP]);
 
     const [result, setResult] = useState<null | {
         btlPrice: number;
@@ -724,10 +718,8 @@ const SoftDrinksCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Cal
     }, [initialData]);
 
     useEffect(() => {
-        if (!initialData) {
-            setGp(defaultGP.toString());
-        }
-    }, [defaultGP, initialData]);
+        setGp(defaultGP.toString());
+    }, [defaultGP]);
 
     const [result, setResult] = useState<null | {
         unitCost: number;
@@ -876,10 +868,8 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
     }, [initialData]);
 
     useEffect(() => {
-        if (!initialData) {
-            setGp(defaultGP.toString());
-        }
-    }, [defaultGP, initialData]);
+        setGp(defaultGP.toString());
+    }, [defaultGP]);
 
     const [result, setResult] = useState<null | {
         costPerMl: number;
