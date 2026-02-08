@@ -27,9 +27,17 @@ type CalculationItem = {
 type Sector = "Pub" | "Hotel";
 type Tier = "Low" | "Mid" | "High";
 
-const GPTargets: Record<Sector, Record<Tier, number>> = {
-    Pub: { Low: 60, Mid: 65, High: 72 },
-    Hotel: { Low: 68, Mid: 72, High: 78 },
+const GPTargets: Record<Sector, Record<Tier, Record<string, number>>> = {
+    Pub: {
+        Low: { Draught: 55, Spirits: 68, Wine: 65, "Soft Drinks": 70, "Post Mix": 80 },
+        Mid: { Draught: 60, Spirits: 72, Wine: 68, "Soft Drinks": 75, "Post Mix": 85 },
+        High: { Draught: 65, Spirits: 75, Wine: 72, "Soft Drinks": 80, "Post Mix": 90 },
+    },
+    Hotel: {
+        Low: { Draught: 65, Spirits: 70, Wine: 68, "Soft Drinks": 72, "Post Mix": 82 },
+        Mid: { Draught: 68, Spirits: 75, Wine: 70, "Soft Drinks": 78, "Post Mix": 85 },
+        High: { Draught: 72, Spirits: 78, Wine: 74, "Soft Drinks": 82, "Post Mix": 90 },
+    },
 };
 
 // --- Components ---
@@ -1058,6 +1066,7 @@ export default function GPCalculatorPage() {
     const [itemToLoad, setItemToLoad] = useState<CalculationItem | null>(null);
 
     const currentGlobalTarget = GPTargets[sector][tier];
+    const [showRates, setShowRates] = useState(false);
 
     // Load history from localStorage on mount
     useEffect(() => {
@@ -1136,9 +1145,27 @@ export default function GPCalculatorPage() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4 bg-slate-900/50 px-4 py-2 rounded-lg border border-slate-700/50">
+                    <div className="flex items-center gap-4 bg-slate-900/50 px-4 py-2 rounded-lg border border-slate-700/50 relative">
                         <span className="text-sm font-medium text-slate-400">Target GP:</span>
-                        <span className="text-2xl font-bold text-green-400">{currentGlobalTarget}%</span>
+                        <span className="text-2xl font-bold text-green-400">
+                            {/* Average or Range? Let's show a "View" button instead of single number since it varies */}
+                            <button onClick={() => setShowRates(!showRates)} className="text-sm bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-white transition-colors">
+                                View Rates
+                            </button>
+                        </span>
+                        {showRates && (
+                            <div className="absolute top-full right-0 mt-2 w-64 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 p-4 z-50 animate-in fade-in slide-in-from-top-2">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 border-b border-slate-100 pb-2">Target GP Rates ({sector} - {tier})</h4>
+                                <div className="space-y-2 text-sm">
+                                    {Object.entries(currentGlobalTarget).map(([cat, val]) => (
+                                        <div key={cat} className="flex justify-between items-center">
+                                            <span className="font-medium">{cat}</span>
+                                            <span className="font-bold text-green-600">{val}%</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -1192,11 +1219,11 @@ export default function GPCalculatorPage() {
                             </div>
                         )}
 
-                        {activeTab === "Draught" && <DraughtCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget} />}
-                        {activeTab === "Spirits" && <SpiritsCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget} />}
-                        {activeTab === "Wine" && <WineCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget} />}
-                        {activeTab === "Soft Drinks" && <SoftDrinksCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget} />}
-                        {activeTab === "Post Mix" && <PostMixCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget} />}
+                        {activeTab === "Draught" && <DraughtCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget["Draught"]} />}
+                        {activeTab === "Spirits" && <SpiritsCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget["Spirits"]} />}
+                        {activeTab === "Wine" && <WineCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget["Wine"]} />}
+                        {activeTab === "Soft Drinks" && <SoftDrinksCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget["Soft Drinks"]} />}
+                        {activeTab === "Post Mix" && <PostMixCalc onSave={addToHistory} initialData={itemToLoad} defaultGP={currentGlobalTarget["Post Mix"]} />}
                     </div>
                 </div>
 
@@ -1281,7 +1308,17 @@ export default function GPCalculatorPage() {
                         <div className="inline-block bg-slate-100 rounded-lg p-4 border border-slate-200">
                             <div className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Venue Profile</div>
                             <div className="text-2xl font-bold text-slate-900">{sector} <span className="text-slate-300">|</span> {tier}</div>
-                            <div className="text-sm text-slate-600 font-medium mt-1">Target GP: <span className="text-black font-bold">{currentGlobalTarget}%</span></div>
+                            <div className="text-sm text-slate-600 font-medium mt-1">
+                                <div className="text-xs font-bold mb-1">Target GP Rates:</div>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                    {Object.entries(currentGlobalTarget).map(([k, v]) => (
+                                        <div key={k} className="flex justify-between w-24">
+                                            <span>{k}:</span>
+                                            <span className="font-bold">{v}%</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                         <p className="text-xs text-slate-400 mt-2 font-mono">Generated: {new Date().toLocaleDateString()}</p>
                     </div>
@@ -1314,65 +1351,61 @@ export default function GPCalculatorPage() {
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {items.map(item => {
-                                            // Extract Comparison Data based on Type
-                                            let measure = "-";
-                                            let current = "-";
-                                            let recommended = "-";
-                                            let cost = "-";
-                                            let targetGp = item.details["Target GP"] || "-";
                                             const d = item.details;
+                                            const type = item.type;
+                                            type ReportRow = { measure: string, rec: string, curr: string, cost: string, variance: string, varClass: string };
+                                            const rows: ReportRow[] = [];
+
+                                            // Helper to push row
+                                            const addRow = (measure: string, rec: string, curr: string, cost: string) => {
+                                                // Calc Variance
+                                                let variance = "-";
+                                                let varClass = "text-slate-400";
+                                                if (curr && rec && curr !== "-" && rec !== "-") {
+                                                    const c = parseFloat(curr.replace(/[£,]/g, ""));
+                                                    const r = parseFloat(rec.replace(/[£,]/g, ""));
+                                                    const v = r - c;
+                                                    if (!isNaN(v)) {
+                                                        variance = `${v > 0 ? "+" : ""}£${v.toFixed(2)}`;
+                                                        varClass = v > 0 ? "text-green-600 font-bold" : (v < 0 ? "text-red-500" : "text-slate-400");
+                                                    }
+                                                }
+                                                rows.push({ measure, rec, curr, cost, variance, varClass });
+                                            };
 
                                             if (type === "Draught") {
-                                                measure = "Pint";
-                                                current = d["Current Sell Price"];
-                                                recommended = d["Recommended Pint"];
-                                                cost = d["New Total Cost (Ex-VAT)"];
+                                                addRow("Pint", d["Recommended Pint"], d["Current Sell Price"], d["New Total Cost (Ex-VAT)"]);
+                                                addRow("Half", d["Recommended Half"], "-", "-");
                                             } else if (type === "Spirits") {
-                                                measure = "25ml";
-                                                current = d["Current 25ml Price"];
-                                                recommended = d["Recommended 25ml"];
-                                                cost = d["Bottle Size"] + " @ " + d["New Bottle Cost (Ex-VAT)"];
+                                                addRow("25ml", d["Recommended 25ml"], d["Current 25ml Price"], d["Bottle Size"] + " @ " + d["New Bottle Cost (Ex-VAT)"]);
+                                                addRow("50ml", d["Recommended 50ml"], "-", "-");
                                             } else if (type === "Wine") {
-                                                measure = "Bottle";
-                                                current = d["Current Bottle Price"];
-                                                recommended = d["Recommended Bottle"];
-                                                cost = d["New Btl Cost (Ex-VAT)"];
+                                                if (d["Recommended Bottle"]) addRow("Bottle", d["Recommended Bottle"], d["Current Bottle Price"], d["New Btl Cost (Ex-VAT)"]);
+                                                if (d["Recommended 250ml"]) addRow("250ml", d["Recommended 250ml"], d["Current 250ml Price"], "-");
+                                                if (d["Recommended 175ml"]) addRow("175ml", d["Recommended 175ml"], d["Current 175ml Price"], "-");
+                                                if (d["Recommended 125ml"]) addRow("125ml", d["Recommended 125ml"], d["Current 125ml Price"], "-");
                                             } else if (type === "Soft Drinks") {
-                                                measure = d["Unit Size"] || "Unit";
-                                                current = d["Current Sell Price"];
-                                                recommended = d["Recommended Price"];
-                                                cost = d["Unit Cost (Ex-VAT)"];
+                                                addRow(d["Unit Size"] || "Unit", d["Recommended Price"], d["Current Sell Price"], d["Unit Cost (Ex-VAT)"]);
                                             } else if (type === "Post Mix") {
-                                                measure = "Pint";
-                                                current = d["Current Pint Price"];
-                                                recommended = d["Recommended Pint"];
-                                                cost = "BIB: " + d["BIB Cost (Ex-VAT)"];
+                                                addRow("Pint", d["Recommended Pint"], d["Current Pint Price"], "BIB: " + d["BIB Cost (Ex-VAT)"]);
+                                                addRow("Half", d["Recommended Half"], "-", "-");
+                                                addRow("16oz", d["Recommended 16oz"], "-", "-");
+                                                addRow("Dash", d["Recommended Dash"], "-", "-");
                                             }
 
-                                            // Calc Variance
-                                            let variance = "-";
-                                            let varClass = "text-slate-400";
-                                            if (current && recommended && current !== "-" && recommended !== "-") {
-                                                const c = parseFloat(current.replace(/[£,]/g, ""));
-                                                const r = parseFloat(recommended.replace(/[£,]/g, ""));
-                                                const v = r - c;
-                                                if (!isNaN(v)) {
-                                                    variance = `${v > 0 ? "+" : ""}£${v.toFixed(2)}`;
-                                                    varClass = v > 0 ? "text-green-600 font-bold" : (v < 0 ? "text-red-500" : "text-slate-400");
-                                                }
-                                            }
-
-                                            return (
-                                                <tr key={item.id} className="group">
-                                                    <td className="py-3 font-bold text-slate-800">{item.product}</td>
-                                                    <td className="py-3 text-slate-500">{measure}</td>
-                                                    <td className="py-3 text-right text-slate-600">{cost}</td>
-                                                    <td className="py-3 text-right text-slate-600">{targetGp}</td>
-                                                    <td className="py-3 text-right font-medium text-slate-700">{current}</td>
-                                                    <td className="py-3 text-right font-bold text-blue-600">{recommended}</td>
-                                                    <td className={`py-3 text-right ${varClass}`}>{variance}</td>
+                                            return rows.map((row, idx) => (
+                                                <tr key={`${item.id}-${idx}`} className={idx === 0 ? "border-t border-slate-100" : ""}>
+                                                    <td className="py-3 font-bold text-slate-800">
+                                                        {idx === 0 ? item.product : ""}
+                                                    </td>
+                                                    <td className="py-3 text-slate-500">{row.measure}</td>
+                                                    <td className="py-3 text-right text-slate-600 font-mono text-xs">{row.cost}</td>
+                                                    <td className="py-3 text-right text-slate-600">{idx === 0 ? (d["Target GP"] || "-") : ""}</td>
+                                                    <td className="py-3 text-right font-medium text-slate-700">{row.curr}</td>
+                                                    <td className="py-3 text-right font-bold text-blue-600">{row.rec}</td>
+                                                    <td className={`py-3 text-right ${row.varClass}`}>{row.variance}</td>
                                                 </tr>
-                                            );
+                                            ));
                                         })}
                                     </tbody>
                                 </table>
