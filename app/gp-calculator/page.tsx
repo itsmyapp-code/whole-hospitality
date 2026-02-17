@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Head from "next/head";
 import Image from "next/image";
-import { Copy, Pencil, Trash2 } from "lucide-react";
+import { Copy, Pencil, Trash2, Upload, Download, Plus, FileSpreadsheet } from "lucide-react";
 
 // --- Utility Functions ---
 
@@ -100,7 +100,7 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
             if (d["Forecast Increase Value"]) setIncVal(d["Forecast Increase Value"]);
             if (d["Extra Duty (Ex-VAT)"]) setDuty(d["Extra Duty (Ex-VAT)"].replace(/[£,]/g, ""));
             // New fields
-            if (d["Current Sell Price"]) setCurrentPrice(d["Current Sell Price"].replace(/[£,]/g, ""));
+            if (d["Current Pint Price (Inc)"]) setCurrentPrice(d["Current Pint Price (Inc)"].replace(/[£,]/g, ""));
         }
     }, [initialData]);
 
@@ -113,9 +113,11 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
     const [result, setResult] = useState<null | {
         newTotal: number;
         pint: number;
+        p16oz: number;
+        p12oz: number;
         half: number;
+        dash: number;
         currentGP: number | null;
-
         marginUplift: number | null;
     }>(null);
 
@@ -163,11 +165,14 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
 
         // Formula: ( (TotalCost / Pints) / (1 - GP/100) ) * 1.2 (VAT)
         // Then Smart Round
-        const rawPintPrice = ((forecastTotal / pints) / (1 - targetGp / 100)) * 1.20;
-        const recommPint = smartRound(rawPintPrice);
+        const costPerMl = (forecastTotal / pints) / 568;
+        const calcPrice = (ml: number) => smartRound(((costPerMl * ml) / (1 - targetGp / 100)) * 1.20);
 
-        // Half: (Pint/2) + Surcharge -> Round
-        const recommHalf = smartRound((recommPint / 2) + hPrem);
+        const recommPint = calcPrice(568);
+        const recomm16oz = calcPrice(454);
+        const recomm12oz = calcPrice(341);
+        const recommHalf = calcPrice(284);
+        const recommDash = calcPrice(50);
 
         // --- Reality Check & Analytics ---
         const currSell = parseFloat(currentPrice) || 0;
@@ -178,7 +183,7 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
         let marginUplift = null;
 
         if (currSell > 0) {
-            const costPerPint = forecastTotal / pints;
+            const costPerPint = costPerMl * 568;
             const netSales = currSell / 1.2;
             currentGP = ((netSales - costPerPint) / netSales) * 100;
 
@@ -189,7 +194,10 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
         setResult({
             newTotal: forecastTotal,
             pint: recommPint,
+            p16oz: recomm16oz,
+            p12oz: recomm12oz,
             half: recommHalf,
+            dash: recommDash,
             currentGP: currentGP,
             marginUplift: marginUplift
         });
@@ -210,10 +218,13 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                 "Forecast Increase Amount": `£${increaseAmt.toFixed(2)}`,
                 "Extra Duty (Ex-VAT)": `£${dutyTotal.toFixed(2)}`,
                 "New Total Cost (Ex-VAT)": `£${forecastTotal.toFixed(2)}`,
-                "Current Sell Price": currSell > 0 ? `£${currSell.toFixed(2)}` : "-",
+                "Current Pint Price (Inc)": currSell > 0 ? `£${currSell.toFixed(2)}` : "-",
                 "Current GP": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
                 "Recommended Pint": `£${recommPint.toFixed(2)}`,
+                "Recommended 16oz": `£${recomm16oz.toFixed(2)}`,
+                "Recommended 12oz": `£${recomm12oz.toFixed(2)}`,
                 "Recommended Half": `£${recommHalf.toFixed(2)}`,
+                "Recommended Dash": `£${recommDash.toFixed(2)}`,
             },
         };
         onSave(item);
@@ -245,7 +256,7 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <h3 className="text-sm font-bold text-blue-500 uppercase tracking-wider mb-4">Targets & Reality</h3>
                     <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 gap-2">
                             <InputField label="Target GP %" value={gp} onChange={setGp} type="number" />
                             <InputField label="Current Pint (Inc-VAT)" value={currentPrice} onChange={setCurrentPrice} type="number" />
                         </div>
@@ -276,7 +287,7 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                         <p className="text-lg">New Total Barrel Cost: <strong>£{result.newTotal.toFixed(2)}</strong></p>
                         <div className="flex flex-col md:flex-row justify-center gap-8 mt-4 text-2xl font-bold text-slate-800">
                             <div className="flex flex-col items-center">
-                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">Recommended Pint</span>
+                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">Pint</span>
                                 <span>£{result.pint.toFixed(2)}</span>
                                 {result.currentGP !== null && (
                                     <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded mt-1">
@@ -286,8 +297,23 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                             </div>
                             <div className="hidden md:block w-px bg-slate-200"></div>
                             <div className="flex flex-col items-center">
-                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">Recommended Half</span>
+                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">16oz</span>
+                                <span>£{result.p16oz.toFixed(2)}</span>
+                            </div>
+                            <div className="hidden md:block w-px bg-slate-200"></div>
+                            <div className="flex flex-col items-center">
+                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">12oz</span>
+                                <span>£{result.p12oz.toFixed(2)}</span>
+                            </div>
+                            <div className="hidden md:block w-px bg-slate-200"></div>
+                            <div className="flex flex-col items-center">
+                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">Half</span>
                                 <span>£{result.half.toFixed(2)}</span>
+                            </div>
+                            <div className="hidden md:block w-px bg-slate-200"></div>
+                            <div className="flex flex-col items-center">
+                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">Dash</span>
+                                <span>£{result.dash.toFixed(2)}</span>
                             </div>
                             <div className="hidden md:block w-px bg-slate-200"></div>
                             <div className="flex flex-col items-center">
@@ -857,7 +883,8 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
     const [gp, setGp] = useState("");
 
     // Reality Check
-    const [currentPintPrice, setCurrentPintPrice] = useState("");
+    const [currentPrice, setCurrentPrice] = useState("");
+    const [currentPriceUnit, setCurrentPriceUnit] = useState("Pint");
 
     useEffect(() => {
         if (initialData && initialData.type === "Post Mix") {
@@ -868,7 +895,7 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
             if (d["Dilution Ratio"]) setRatio(d["Dilution Ratio"].replace(/:1/g, ""));
             if (d["Target GP"]) setGp(d["Target GP"].replace(/[%]/g, ""));
 
-            if (d["Current Pint Price"]) setCurrentPintPrice(d["Current Pint Price"].replace(/[£,]/g, ""));
+            if (d["Current Price"]) setCurrentPrice(d["Current Price"].replace(/[£,]/g, ""));
         }
     }, [initialData]);
 
@@ -879,8 +906,9 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
     const [result, setResult] = useState<null | {
         costPerMl: number;
         pint: number;
+        p16oz: number;
+        p12oz: number;
         half: number;
-        soda16oz: number;
         dash: number;
         currentGP: number | null;
     }>(null);
@@ -902,34 +930,39 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
 
         // Measures
         const mlPint = 568;
-        const mlHalf = 284;
         const ml16oz = 454;
+        const ml12oz = 341;
+        const mlHalf = 284;
         const mlDash = 50;
 
         // Prices
         const calcPrice = (ml: number) => smartRound(((costPerMl * ml) / (1 - targetGp / 100)) * 1.20);
 
         const pPint = calcPrice(mlPint);
-        const pHalf = calcPrice(mlHalf);
         const p16oz = calcPrice(ml16oz);
+        const p12oz = calcPrice(ml12oz);
+        const pHalf = calcPrice(mlHalf);
         const pDash = calcPrice(mlDash);
 
         // --- Reality Check ---
-        const currPint = parseFloat(currentPintPrice) || 0;
+        const currPrice = parseFloat(currentPrice) || 0;
 
         let currentGP = null;
 
-        if (currPint > 0) {
-            const netSalesPint = currPint / 1.2;
-            const costPint = costPerMl * mlPint;
-            currentGP = ((netSalesPint - costPint) / netSalesPint) * 100;
+        if (currPrice > 0) {
+            const volMap: Record<string, number> = { "Pint": 568, "16oz": 454, "12oz": 341, "1/2 Pint": 284 };
+            const unitVol = volMap[currentPriceUnit] || 568;
+            const netSales = currPrice / 1.2;
+            const costPerUnit = costPerMl * unitVol;
+            currentGP = ((netSales - costPerUnit) / netSales) * 100;
         }
 
         setResult({
             costPerMl,
             pint: pPint,
+            p16oz: p16oz,
+            p12oz: p12oz,
             half: pHalf,
-            soda16oz: p16oz,
             dash: pDash,
             currentGP
         });
@@ -945,11 +978,13 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                 "Dilution Ratio": `${r}:1`,
                 "Target GP": `${targetGp}%`,
                 "Recommended Pint": `£${pPint.toFixed(2)}`,
-                "Recommended Half": `£${pHalf.toFixed(2)}`,
                 "Recommended 16oz": `£${p16oz.toFixed(2)}`,
+                "Recommended 12oz": `£${p12oz.toFixed(2)}`,
+                "Recommended Half": `£${pHalf.toFixed(2)}`,
                 "Recommended Dash": `£${pDash.toFixed(2)}`,
-                "Current Pint Price": currPint > 0 ? `£${currPint.toFixed(2)}` : "-",
-                "Current GP (Pint)": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
+                "Current Price": currPrice > 0 ? `£${currPrice.toFixed(2)}` : "-",
+                "Current Price Unit": currentPriceUnit,
+                "Current GP": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
             },
         };
         onSave(item);
@@ -982,7 +1017,10 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <h3 className="text-sm font-bold text-blue-500 uppercase tracking-wider mb-4">Reality Check</h3>
                     <div className="space-y-4">
-                        <InputField label="Current Pint Price (Inc-VAT) £" value={currentPintPrice} onChange={setCurrentPintPrice} type="number" />
+                        <div className="grid grid-cols-1 gap-2">
+                            <InputField label="Current Price (Inc)" value={currentPrice} onChange={setCurrentPrice} type="number" />
+                            <SelectField label="Unit" value={currentPriceUnit} onChange={setCurrentPriceUnit} options={["Pint", "16oz", "12oz", "1/2 Pint"]} />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -992,7 +1030,7 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                     <h4 className="text-slate-500 font-semibold mb-2">Results</h4>
                     <p className="text-lg text-slate-500 mb-4">Cost per 100ml: £{(result.costPerMl * 100).toFixed(3)}</p>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2 text-lg font-bold text-slate-800">
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-2 text-lg font-bold text-slate-800">
                         <div className="flex flex-col items-center p-2 bg-white rounded border border-slate-100">
                             <span className="text-xs text-slate-400 font-normal">Pint</span>
                             <span>£{result.pint.toFixed(2)}</span>
@@ -1003,12 +1041,16 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                             )}
                         </div>
                         <div className="flex flex-col items-center p-2 bg-white rounded border border-slate-100">
-                            <span className="text-xs text-slate-400 font-normal">Half</span>
-                            <span>£{result.half.toFixed(2)}</span>
+                            <span className="text-xs text-slate-400 font-normal">16oz</span>
+                            <span>£{result.p16oz.toFixed(2)}</span>
                         </div>
                         <div className="flex flex-col items-center p-2 bg-white rounded border border-slate-100">
-                            <span className="text-xs text-slate-400 font-normal">16oz</span>
-                            <span>£{result.soda16oz.toFixed(2)}</span>
+                            <span className="text-xs text-slate-400 font-normal">12oz</span>
+                            <span>£{result.p12oz.toFixed(2)}</span>
+                        </div>
+                        <div className="flex flex-col items-center p-2 bg-white rounded border border-slate-100">
+                            <span className="text-xs text-slate-400 font-normal">Half</span>
+                            <span>£{result.half.toFixed(2)}</span>
                         </div>
                         <div className="flex flex-col items-center p-2 bg-white rounded border border-slate-100">
                             <span className="text-xs text-slate-400 font-normal">Dash</span>
@@ -1019,6 +1061,650 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
             )}
         </div>
     );
+};
+
+// --- CSV Utilities ---
+
+type ProductGroup = "Draught" | "Spirits" | "Wine" | "Soft Drinks" | "Post Mix";
+
+const CSV_TEMPLATES: Record<ProductGroup, { headers: string[], sampleRow: string[] }> = {
+    Draught: {
+        headers: ["Product Name", "Size", "Basis", "Cost Ex-VAT", "Target GP", "Half Surcharge", "Current Pint Price", "Increase Type", "Increase Value", "Extra Duty"],
+        sampleRow: ["Madri", "11 Gal", "Per Barrel", "120.00", "", "0.10", "5.50", "", "", ""],
+    },
+    Spirits: {
+        headers: ["Product Name", "Size", "Cost Ex-VAT", "Target GP", "Current 25ml Price", "Increase Type", "Increase Value"],
+        sampleRow: ["Smirnoff Vodka", "70cl", "9.50", "", "3.80", "", ""],
+    },
+    Wine: {
+        headers: ["Product Name", "Cost Ex-VAT", "Target GP", "Current Bottle Price", "Current 250ml", "Current 175ml", "Current 125ml", "Increase Type", "Increase Value"],
+        sampleRow: ["Pinot Grigio", "4.50", "", "22.00", "7.50", "6.00", "5.00", "", ""],
+    },
+    "Soft Drinks": {
+        headers: ["Product Name", "Case Size", "Unit Size", "Case Cost Ex-VAT", "Target GP", "Current Price"],
+        sampleRow: ["Coca Cola 330ml", "24", "330ml", "8.50", "", "2.50"],
+    },
+    "Post Mix": {
+        headers: ["Product Name", "BIB Size Litres", "BIB Cost Ex-VAT", "Ratio", "Target GP", "Current Pint Price"],
+        sampleRow: ["Pepsi", "7", "25.00", "5", "", "2.20"],
+    },
+};
+
+const parseCSV = (text: string): Record<string, string>[] => {
+    const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(",").map(h => h.trim().replace(/^["']|["']$/g, ""));
+    return lines.slice(1).map(line => {
+        const values = line.split(",").map(v => v.trim().replace(/^["']|["']$/g, ""));
+        const obj: Record<string, string> = {};
+        headers.forEach((h, i) => { obj[h] = values[i] || ""; });
+        return obj;
+    });
+};
+
+const downloadCSV = (filename: string, headers: string[], rows: string[][]) => {
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+};
+
+const downloadTemplate = (group: ProductGroup) => {
+    const tmpl = CSV_TEMPLATES[group];
+    downloadCSV(`gp_template_${group.toLowerCase().replace(/ /g, "_")}.csv`, tmpl.headers, [tmpl.sampleRow]);
+};
+
+const exportHistoryToCSV = (history: CalculationItem[]) => {
+    const headers = ["Product", "Type", "Target GP", "Recommended Price", "Current Price", "Current GP", "Timestamp"];
+    const rows = history.map(item => {
+        const d = item.details;
+        let recPrice = "-";
+        let currPrice = "-";
+        let currentGP = d["Current GP"] || d["Current GP (Btl)"] || d["Current GP (Pint)"] || "-";
+
+        if (item.type === "Draught") { recPrice = d["Recommended Pint"] || "-"; currPrice = d["Current Sell Price"] || "-"; }
+        else if (item.type === "Spirits") { recPrice = d["Recommended 25ml"] || "-"; currPrice = d["Current 25ml Price"] || "-"; }
+        else if (item.type === "Wine") { recPrice = d["Recommended Bottle"] || "-"; currPrice = d["Current Bottle Price"] || "-"; }
+        else if (item.type === "Soft Drinks") { recPrice = d["Recommended Price"] || "-"; currPrice = d["Current Sell Price"] || "-"; }
+        else if (item.type === "Post Mix") { recPrice = d["Recommended Pint"] || "-"; currPrice = d["Current Pint Price"] || "-"; }
+
+        return [item.product, item.type, d["Target GP"] || "-", recPrice, currPrice, currentGP, new Date(item.timestamp).toLocaleString()];
+    });
+    downloadCSV("gp_session_history.csv", headers, rows);
+};
+
+// --- Upload Calculator Results Type ---
+
+type UploadResult = {
+    product: string;
+    group: ProductGroup;
+    details: Record<string, string>;
+    calculationItem: CalculationItem;
+};
+
+// 6. Upload / Batch CSV Calculator
+const UploadCalc = ({ onSave, defaultGPs, sector, tier, onResultsChange }: {
+    onSave: (data: CalculationItem) => void,
+    defaultGPs: Record<string, number>,
+    sector: string,
+    tier: string,
+    onResultsChange?: (results: UploadResult[], group: ProductGroup) => void,
+}) => {
+    const [group, setGroup] = useState<ProductGroup>("Wine");
+    const [file, setFile] = useState<File | null>(null);
+    const [results, setResults] = useState<UploadResult[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [dragOver, setDragOver] = useState(false);
+
+    const handleFile = (f: File) => {
+        if (!f.name.endsWith(".csv")) {
+            setError("Please upload a .csv file");
+            return;
+        }
+        setFile(f);
+        setError(null);
+        setResults([]);
+    };
+
+    const calculateAll = () => {
+        if (!file) { setError("Please select a CSV file first."); return; }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target?.result as string;
+            const rows = parseCSV(text);
+            if (rows.length === 0) { setError("CSV is empty or invalid. Please check the format."); return; }
+            try {
+                const calcResults = rows.map((row, idx) => calculateRow(row, group, defaultGPs, idx));
+                setResults(calcResults);
+                onResultsChange?.(calcResults, group);
+                setError(null);
+            } catch (err: any) {
+                setError(`Error processing CSV: ${err.message || err}`);
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    const exportResults = () => {
+        if (results.length === 0) return;
+        const allKeys = new Set<string>();
+        allKeys.add("Product");
+        allKeys.add("Group");
+        results.forEach(r => Object.keys(r.details).forEach(k => allKeys.add(k)));
+        const headers = Array.from(allKeys);
+        const csvRows = results.map(r => {
+            return headers.map(h => {
+                if (h === "Product") return r.product;
+                if (h === "Group") return r.group;
+                return (r.details[h] || "").replace(/,/g, "");
+            });
+        });
+        downloadCSV(`gp_${group.toLowerCase().replace(/ /g, "_")}_results.csv`, headers, csvRows);
+    };
+
+    const addAllToHistory = () => {
+        results.forEach(r => onSave(r.calculationItem));
+    };
+
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Group Selection & Template */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                        <FileSpreadsheet className="h-4 w-4" /> CSV Batch Upload
+                    </h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-sm font-medium text-slate-600">Product Group</label>
+                        <select
+                            value={group}
+                            onChange={e => { setGroup(e.target.value as ProductGroup); setResults([]); setError(null); }}
+                            className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all bg-white"
+                        >
+                            {(["Draught", "Spirits", "Wine", "Soft Drinks", "Post Mix"] as ProductGroup[]).map(g => (
+                                <option key={g} value={g}>{g}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <button
+                        onClick={() => downloadTemplate(group)}
+                        className="flex items-center justify-center gap-2 bg-slate-100 text-slate-700 font-bold text-sm py-2 px-4 rounded-lg hover:bg-slate-200 transition-colors border border-slate-200"
+                    >
+                        <Download className="h-4 w-4" /> Download Template
+                    </button>
+                    <div className="text-xs text-slate-400">
+                        <p>Using <strong>{sector} / {tier}</strong> GP targets.</p>
+                        <p>Target GP for {group}: <strong>{defaultGPs[group]}%</strong></p>
+                    </div>
+                </div>
+            </div>
+
+            {/* File Upload Zone */}
+            <div
+                className={`bg-white p-8 rounded-xl shadow-sm border-2 border-dashed transition-colors text-center cursor-pointer
+                    ${dragOver ? "border-blue-400 bg-blue-50" : "border-slate-200 hover:border-slate-300"}`}
+                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={e => { e.preventDefault(); setDragOver(false); if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]); }}
+                onClick={() => document.getElementById("csv-file-input")?.click()}
+            >
+                <input
+                    id="csv-file-input"
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={e => { if (e.target.files && e.target.files.length > 0) handleFile(e.target.files[0]); }}
+                />
+                <Upload className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                {file ? (
+                    <p className="text-slate-700 font-medium">{file.name} <span className="text-slate-400 text-sm">({(file.size / 1024).toFixed(1)} KB)</span></p>
+                ) : (
+                    <p className="text-slate-400">Drag & drop a CSV file here, or <span className="text-blue-500 font-medium">click to browse</span></p>
+                )}
+            </div>
+
+            {/* Calculate Button */}
+            <div className="flex gap-3">
+                <button
+                    onClick={calculateAll}
+                    disabled={!file}
+                    className={`flex-1 flex items-center justify-center gap-2 font-bold py-3 rounded-lg transition-all shadow-lg
+                        ${file ? "bg-slate-700 text-white hover:bg-slate-600 shadow-slate-200" : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"}`}
+                >
+                    CALCULATE ALL
+                </button>
+                {file && (
+                    <button
+                        onClick={() => { setFile(null); setResults([]); setError(null); const inp = document.getElementById("csv-file-input") as HTMLInputElement; if (inp) inp.value = ""; }}
+                        className="px-4 py-3 bg-white border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 font-bold transition-colors"
+                    >
+                        CLEAR
+                    </button>
+                )}
+            </div>
+
+            {/* Error */}
+            {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-sm font-medium">
+                    {error}
+                </div>
+            )}
+
+            {/* Results Table */}
+            {results.length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div className="bg-slate-50 p-4 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3">
+                        <h3 className="font-bold text-slate-700 flex items-center gap-2">
+                            <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full">{results.length}</span>
+                            {group} Products Calculated
+                        </h3>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={addAllToHistory}
+                                className="flex items-center gap-1 bg-blue-600 text-white text-xs font-bold py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                <Plus className="h-3 w-3" /> ADD ALL TO HISTORY
+                            </button>
+                            <button
+                                onClick={exportResults}
+                                className="flex items-center gap-1 bg-green-600 text-white text-xs font-bold py-2 px-3 rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                                <Download className="h-3 w-3" /> EXPORT CSV
+                            </button>
+                            <button
+                                onClick={() => window.print()}
+                                className="flex items-center gap-1 bg-slate-600 text-white text-xs font-bold py-2 px-3 rounded-lg hover:bg-slate-700 transition-colors"
+                            >
+                                PRINT
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead>
+                                <tr className="border-b border-slate-200 text-slate-400 text-xs uppercase tracking-wider bg-slate-50">
+                                    <th className="py-3 px-4 font-medium">Product</th>
+                                    {group === "Draught" && (
+                                        <>
+                                            <th className="py-3 px-3 font-medium text-right">Cost</th>
+                                            <th className="py-3 px-3 font-medium text-right">Rec Pint</th>
+                                            <th className="py-3 px-3 font-medium text-right">Rec Half</th>
+                                            <th className="py-3 px-3 font-medium text-right">Current</th>
+                                            <th className="py-3 px-3 font-medium text-right">GP</th>
+                                        </>
+                                    )}
+                                    {group === "Spirits" && (
+                                        <>
+                                            <th className="py-3 px-3 font-medium text-right">Cost</th>
+                                            <th className="py-3 px-3 font-medium text-right">Rec 25ml</th>
+                                            <th className="py-3 px-3 font-medium text-right">Rec 50ml</th>
+                                            <th className="py-3 px-3 font-medium text-right">Current</th>
+                                            <th className="py-3 px-3 font-medium text-right">GP</th>
+                                        </>
+                                    )}
+                                    {group === "Wine" && (
+                                        <>
+                                            <th className="py-3 px-3 font-medium text-right">Cost</th>
+                                            <th className="py-3 px-3 font-medium text-right">Bottle</th>
+                                            <th className="py-3 px-3 font-medium text-right">250ml</th>
+                                            <th className="py-3 px-3 font-medium text-right">175ml</th>
+                                            <th className="py-3 px-3 font-medium text-right">125ml</th>
+                                            <th className="py-3 px-3 font-medium text-right">GP</th>
+                                        </>
+                                    )}
+                                    {group === "Soft Drinks" && (
+                                        <>
+                                            <th className="py-3 px-3 font-medium text-right">Unit Cost</th>
+                                            <th className="py-3 px-3 font-medium text-right">Rec Price</th>
+                                            <th className="py-3 px-3 font-medium text-right">Current</th>
+                                            <th className="py-3 px-3 font-medium text-right">GP</th>
+                                        </>
+                                    )}
+                                    {group === "Post Mix" && (
+                                        <>
+                                            <th className="py-3 px-3 font-medium text-right">Cost/100ml</th>
+                                            <th className="py-3 px-3 font-medium text-right">Pint</th>
+                                            <th className="py-3 px-3 font-medium text-right">Half</th>
+                                            <th className="py-3 px-3 font-medium text-right">Current</th>
+                                            <th className="py-3 px-3 font-medium text-right">GP</th>
+                                        </>
+                                    )}
+                                    <th className="py-3 px-3 font-medium text-center">+</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {results.map((r, idx) => {
+                                    const d = r.details;
+                                    const gpClass = (gpStr: string, targetStr: string) => {
+                                        if (gpStr === "-") return "text-slate-400";
+                                        const gpValue = parseFloat(gpStr);
+                                        const tValue = parseFloat(targetStr);
+                                        return gpValue < tValue ? "text-red-600 font-bold" : "text-green-600 font-bold";
+                                    };
+                                    return (
+                                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                            <td className="py-3 px-4 font-bold text-slate-800">{r.product}</td>
+                                            {group === "Draught" && (
+                                                <>
+                                                    <td className="py-3 px-3 text-right text-slate-500 font-mono text-xs">{d["Current Cost (Ex-VAT)"]}</td>
+                                                    <td className="py-3 px-3 text-right font-bold text-blue-600">{d["Recommended Pint"]}</td>
+                                                    <td className="py-3 px-3 text-right text-slate-600">{d["Recommended Half"]}</td>
+                                                    <td className="py-3 px-3 text-right text-slate-500">{d["Current Pint Price (Inc)"]}</td>
+                                                    <td className={`py-3 px-3 text-right text-xs ${gpClass(d["Current GP"], d["Target GP"])}`}>{d["Current GP"]}</td>
+                                                </>
+                                            )}
+                                            {group === "Spirits" && (
+                                                <>
+                                                    <td className="py-3 px-3 text-right text-slate-500 font-mono text-xs">{d["New Bottle Cost (Ex-VAT)"]}</td>
+                                                    <td className="py-3 px-3 text-right font-bold text-blue-600">{d["Recommended 25ml"]}</td>
+                                                    <td className="py-3 px-3 text-right text-slate-600">{d["Recommended 50ml"]}</td>
+                                                    <td className="py-3 px-3 text-right text-slate-500">{d["Current 25ml Price"]}</td>
+                                                    <td className={`py-3 px-3 text-right text-xs ${gpClass(d["Current GP"], d["Target GP"])}`}>{d["Current GP"]}</td>
+                                                </>
+                                            )}
+                                            {group === "Wine" && (
+                                                <>
+                                                    <td className="py-3 px-3 text-right text-slate-500 font-mono text-xs">{d["New Btl Cost (Ex-VAT)"]}</td>
+                                                    <td className="py-3 px-3 text-right font-bold text-blue-600">{d["Recommended Bottle"]}</td>
+                                                    <td className="py-3 px-3 text-right text-slate-600">{d["Recommended 250ml"]}</td>
+                                                    <td className="py-3 px-3 text-right text-slate-600">{d["Recommended 175ml"]}</td>
+                                                    <td className="py-3 px-3 text-right text-slate-600">{d["Recommended 125ml"]}</td>
+                                                    <td className={`py-3 px-3 text-right text-xs ${gpClass(d["Current GP (Btl)"], d["Target GP"])}`}>{d["Current GP (Btl)"]}</td>
+                                                </>
+                                            )}
+                                            {group === "Soft Drinks" && (
+                                                <>
+                                                    <td className="py-3 px-3 text-right text-slate-500 font-mono text-xs">{d["Unit Cost (Ex-VAT)"]}</td>
+                                                    <td className="py-3 px-3 text-right font-bold text-blue-600">{d["Recommended Price"]}</td>
+                                                    <td className="py-3 px-3 text-right text-slate-500">{d["Current Sell Price"]}</td>
+                                                    <td className={`py-3 px-3 text-right text-xs ${gpClass(d["Current GP"], d["Target GP"])}`}>{d["Current GP"]}</td>
+                                                </>
+                                            )}
+                                            {group === "Post Mix" && (
+                                                <>
+                                                    <td className="py-3 px-3 text-right text-slate-500 font-mono text-xs">{d["Cost per 100ml"] || "-"}</td>
+                                                    <td className="py-3 px-3 text-right font-bold text-blue-600">{d["Recommended Pint"]}</td>
+                                                    <td className="py-3 px-3 text-right text-slate-600">{d["Recommended Half"]}</td>
+                                                    <td className="py-3 px-3 text-right text-slate-500">{d["Current Price"]} ({d["Current Price Unit"]})</td>
+                                                    <td className={`py-3 px-3 text-right text-xs ${gpClass(d["Current GP"], d["Target GP"])}`}>{d["Current GP"]}</td>
+                                                </>
+                                            )}
+                                            <td className="py-3 px-3 text-center">
+                                                <button
+                                                    onClick={() => onSave(r.calculationItem)}
+                                                    className="text-slate-400 hover:text-green-600 transition-colors"
+                                                    title="Add to Session History"
+                                                >
+                                                    <Plus className="h-4 w-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// --- Row Calculator for Upload ---
+
+const calculateRow = (row: Record<string, string>, group: ProductGroup, defaultGPs: Record<string, number>, idx: number): UploadResult => {
+    const prodName = row["Product Name"]?.trim() || `Product ${idx + 1}`;
+    const getNum = (key: string, fallback?: number) => {
+        const v = parseFloat(row[key]?.replace(/[£%,]/g, "") || "");
+        return isNaN(v) ? (fallback ?? 0) : v;
+    };
+
+    if (group === "Draught") {
+        const sizeStr = row["Size"]?.trim() || "11 Gal";
+        const basis = row["Basis"]?.trim() || "Per Barrel";
+        const currCost = getNum("Cost Ex-VAT");
+        const targetGp = getNum("Target GP", defaultGPs["Draught"]);
+        const hPrem = getNum("Half Surcharge", 0.10);
+        const currSell = getNum("Current Pint Price");
+        const incType = row["Increase Type"]?.trim() || "";
+        const incVal = getNum("Increase Value");
+        const extraDuty = getNum("Extra Duty");
+
+        if (currCost === 0) throw new Error(`Row ${idx + 1} (${prodName}): Cost is required`);
+
+        let gals = 0;
+        if (sizeStr.includes("Gal")) gals = parseFloat(sizeStr.split(" ")[0]);
+        else if (sizeStr === "30 Ltr") gals = 30 / 4.546;
+        else if (sizeStr === "50 Ltr") gals = 50 / 4.546;
+        const pints = (gals * 4.546 * 1000) / 568;
+        const totalCost = basis === "Per Barrel" ? currCost : currCost * gals;
+
+        let increaseAmt = 0;
+        if (incType === "Percentage (%)") increaseAmt = totalCost * (incVal / 100);
+        else if (incType === "Fixed £ Barrel") increaseAmt = incVal;
+        else if (incVal > 0) increaseAmt = incVal;
+
+        const dutyTotal = basis === "Per Barrel" ? extraDuty : extraDuty * gals;
+        const forecastTotal = totalCost + increaseAmt + dutyTotal;
+        const rawPintPrice = ((forecastTotal / pints) / (1 - targetGp / 100)) * 1.20;
+        const recommPint = smartRound(rawPintPrice);
+        const recomm16oz = smartRound((rawPintPrice / 568) * 454);
+        const recomm12oz = smartRound((rawPintPrice / 568) * 341);
+        const recommHalf = smartRound((recommPint / 2) + hPrem);
+        const recommDash = smartRound((rawPintPrice / 568) * 50);
+
+        let currentGP: number | null = null;
+        if (currSell > 0) {
+            const costPerPint = forecastTotal / pints;
+            const netSales = currSell / 1.2;
+            currentGP = ((netSales - costPerPint) / netSales) * 100;
+        }
+
+        const details: Record<string, string> = {
+            "Unit Size": sizeStr,
+            "Cost Basis": basis,
+            "Current Cost (Ex-VAT)": `£${currCost.toFixed(2)}`,
+            "Target GP": `${targetGp}%`,
+            "Half Surcharge": `£${hPrem.toFixed(2)}`,
+            "Forecast Increase Type": incType || "-",
+            "Forecast Increase Value": incVal ? `${incVal}` : "-",
+            "Forecast Increase Amount": `£${increaseAmt.toFixed(2)}`,
+            "Extra Duty (Ex-VAT)": `£${dutyTotal.toFixed(2)}`,
+            "New Total Cost (Ex-VAT)": `£${forecastTotal.toFixed(2)}`,
+            "Current Pint Price (Inc)": currSell > 0 ? `£${currSell.toFixed(2)}` : "-",
+            "Current GP": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
+            "Recommended Pint": `£${recommPint.toFixed(2)}`,
+            "Recommended 16oz": `£${recomm16oz.toFixed(2)}`,
+            "Recommended 12oz": `£${recomm12oz.toFixed(2)}`,
+            "Recommended Half": `£${recommHalf.toFixed(2)}`,
+            "Recommended Dash": `£${recommDash.toFixed(2)}`,
+        };
+
+        return {
+            product: prodName, group, details,
+            calculationItem: { id: `${Date.now()}-${idx}`, type: "Draught", product: prodName, timestamp: new Date().toISOString(), details },
+        };
+    }
+
+    if (group === "Spirits") {
+        const sizeStr = row["Size"]?.trim() || "70cl";
+        let currCost = getNum("Cost Ex-VAT");
+        const targetGp = getNum("Target GP", defaultGPs["Spirits"]);
+        const curr25 = getNum("Current 25ml Price");
+        const incType = row["Increase Type"]?.trim() || "";
+        const incVal = getNum("Increase Value");
+
+        if (currCost === 0) throw new Error(`Row ${idx + 1} (${prodName}): Cost is required`);
+
+        const origCost = currCost;
+        if (incType === "Percentage (%)") currCost *= (1 + incVal / 100);
+        else if (incVal > 0) currCost += incVal;
+
+        const cl = parseFloat(sizeStr.replace("cl", ""));
+        const mlTotal = cl * 10;
+        const cost25 = (currCost / mlTotal) * 25;
+        const sale25 = smartRound((cost25 / (1 - targetGp / 100)) * 1.20);
+        const sale50 = sale25 * 2;
+
+        let currentGP: number | null = null;
+        if (curr25 > 0) {
+            const netSales25 = curr25 / 1.2;
+            currentGP = ((netSales25 - cost25) / netSales25) * 100;
+        }
+
+        const details: Record<string, string> = {
+            "Bottle Size": sizeStr,
+            "Current Btl Cost (Ex-VAT)": `£${origCost.toFixed(2)}`,
+            "Target GP": `${targetGp}%`, "Increase Type": incType || "-", "Increase Value": incVal ? `${incVal}` : "-",
+            "New Bottle Cost (Ex-VAT)": `£${currCost.toFixed(2)}`,
+            "Current 25ml Price": curr25 > 0 ? `£${curr25.toFixed(2)}` : "-",
+            "Current GP": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
+            "Recommended 25ml": `£${sale25.toFixed(2)}`,
+            "Recommended 50ml": `£${sale50.toFixed(2)}`,
+        };
+
+        return {
+            product: prodName, group, details,
+            calculationItem: { id: `${Date.now()}-${idx}`, type: "Spirits", product: prodName, timestamp: new Date().toISOString(), details },
+        };
+    }
+
+    if (group === "Wine") {
+        let currCost = getNum("Cost Ex-VAT");
+        const targetGp = getNum("Target GP", defaultGPs["Wine"]);
+        const currBtl = getNum("Current Bottle Price");
+        const curr250 = getNum("Current 250ml");
+        const curr175 = getNum("Current 175ml");
+        const curr125 = getNum("Current 125ml");
+        const incType = row["Increase Type"]?.trim() || "";
+        const incVal = getNum("Increase Value");
+
+        if (currCost === 0) throw new Error(`Row ${idx + 1} (${prodName}): Cost is required`);
+
+        const origCost = currCost;
+        if (incType === "Percentage (%)") currCost *= (1 + incVal / 100);
+        else if (incVal > 0) currCost += incVal;
+
+        const btlPrice = smartRound((currCost / (1 - targetGp / 100)) * 1.20);
+        const costPerMl = currCost / 750;
+        const m250 = smartRound((costPerMl * 250 / (1 - targetGp / 100)) * 1.20);
+        const m175 = smartRound((costPerMl * 175 / (1 - (targetGp + 2) / 100)) * 1.20);
+        const m125 = smartRound((costPerMl * 125 / (1 - (targetGp + 4) / 100)) * 1.20);
+
+        let currentGP: number | null = null;
+        if (currBtl > 0) {
+            const netSalesBtl = currBtl / 1.2;
+            currentGP = ((netSalesBtl - currCost) / netSalesBtl) * 100;
+        }
+
+        const details: Record<string, string> = {
+            "Current Btl Cost (Ex-VAT)": `£${origCost.toFixed(2)}`,
+            "Target GP": `${targetGp}%`, "Increase Type": incType || "-", "Increase Value": incVal ? `${incVal}` : "-",
+            "New Btl Cost (Ex-VAT)": `£${currCost.toFixed(2)}`,
+            "Current Bottle Price": currBtl > 0 ? `£${currBtl.toFixed(2)}` : "-",
+            "Current 250ml Price": curr250 > 0 ? `£${curr250.toFixed(2)}` : "-",
+            "Current 175ml Price": curr175 > 0 ? `£${curr175.toFixed(2)}` : "-",
+            "Current 125ml Price": curr125 > 0 ? `£${curr125.toFixed(2)}` : "-",
+            "Current GP (Btl)": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
+            "Recommended Bottle": `£${btlPrice.toFixed(2)}`,
+            "Recommended 250ml": `£${m250.toFixed(2)}`,
+            "Recommended 175ml": `£${m175.toFixed(2)}`,
+            "Recommended 125ml": `£${m125.toFixed(2)}`,
+        };
+
+        return {
+            product: prodName, group, details,
+            calculationItem: { id: `${Date.now()}-${idx}`, type: "Wine", product: prodName, timestamp: new Date().toISOString(), details },
+        };
+    }
+
+    if (group === "Soft Drinks") {
+        const cSize = getNum("Case Size", 24);
+        const unitSize = row["Unit Size"]?.trim() || "330ml";
+        const cCost = getNum("Case Cost Ex-VAT");
+        const targetGp = getNum("Target GP", defaultGPs["Soft Drinks"]);
+        const currSell = getNum("Current Price");
+
+        if (cCost === 0) throw new Error(`Row ${idx + 1} (${prodName}): Case Cost is required`);
+
+        const unitCost = cCost / cSize;
+        const rawRRP = (unitCost / (1 - targetGp / 100)) * 1.20;
+        const unitRRP = smartRound(rawRRP);
+
+        let currentGP: number | null = null;
+        if (currSell > 0) {
+            const netSales = currSell / 1.2;
+            currentGP = ((netSales - unitCost) / netSales) * 100;
+        }
+
+        const details: Record<string, string> = {
+            "Case Size": `${cSize}`, "Unit Size": unitSize,
+            "Case Cost (Ex-VAT)": `£${cCost.toFixed(2)}`,
+            "Unit Cost (Ex-VAT)": `£${unitCost.toFixed(2)}`,
+            "Target GP": `${targetGp}%`,
+            "Recommended Price": `£${unitRRP.toFixed(2)}`,
+            "Current Sell Price": currSell > 0 ? `£${currSell.toFixed(2)}` : "-",
+            "Current GP": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
+        };
+
+        return {
+            product: prodName, group, details,
+            calculationItem: { id: `${Date.now()}-${idx}`, type: "Soft Drinks" as any, product: prodName, timestamp: new Date().toISOString(), details },
+        };
+    }
+
+    // Post Mix
+    const sizeL = getNum("BIB Size Litres", 7);
+    const cost = getNum("BIB Cost Ex-VAT");
+    const r = getNum("Ratio", 5);
+    const targetGp = getNum("Target GP", defaultGPs["Post Mix"]);
+    const currPint = getNum("Current Pint Price");
+
+    if (cost === 0) throw new Error(`Row ${idx + 1} (${prodName}): BIB Cost is required`);
+
+    const totalLiquidMl = sizeL * (r + 1) * 1000;
+    const costPerMl = cost / totalLiquidMl;
+    const calcPrice = (ml: number) => smartRound(((costPerMl * ml) / (1 - targetGp / 100)) * 1.20);
+    const pPint = calcPrice(568);
+    const p16oz = calcPrice(454);
+    const p12oz = calcPrice(341);
+    const pHalf = calcPrice(284);
+    const pDash = calcPrice(50);
+
+    let currentGP: number | null = null;
+    if (currPint > 0) {
+        const netSalesPint = currPint / 1.2;
+        const costPint = costPerMl * 568;
+        currentGP = ((netSalesPint - costPint) / netSalesPint) * 100;
+    }
+
+    const details: Record<string, string> = {
+        "BIB Size (Litres)": `${sizeL}`,
+        "BIB Cost (Ex-VAT)": `£${cost.toFixed(2)}`,
+        "Dilution Ratio": `${r}:1`,
+        "Target GP": `${targetGp}%`,
+        "Cost per 100ml": `£${(costPerMl * 100).toFixed(3)}`,
+        "Recommended Pint": `£${pPint.toFixed(2)}`,
+        "Recommended 16oz": `£${p16oz.toFixed(2)}`,
+        "Recommended 12oz": `£${p12oz.toFixed(2)}`,
+        "Recommended Half": `£${pHalf.toFixed(2)}`,
+        "Recommended Dash": `£${pDash.toFixed(2)}`,
+        "Current Price": currPint > 0 ? `£${currPint.toFixed(2)}` : "-",
+        "Current Price Unit": "Pint",
+        "Current GP": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
+    };
+
+    return {
+        product: prodName, group, details,
+        calculationItem: { id: `${Date.now()}-${idx}`, type: "Post Mix" as any, product: prodName, timestamp: new Date().toISOString(), details },
+    };
 };
 
 // --- Reusable UI Helpers ---
@@ -1051,7 +1737,7 @@ const SelectField = ({ label, value, onChange, options }: { label: string, value
 // --- Main Page Component ---
 
 export default function GPCalculatorPage() {
-    const [activeTab, setActiveTab] = useState<"Instructions" | "Draught" | "Spirits" | "Wine" | "Soft Drinks" | "Post Mix">("Instructions");
+    const [activeTab, setActiveTab] = useState<"Instructions" | "Draught" | "Spirits" | "Wine" | "Soft Drinks" | "Post Mix" | "Upload">("Instructions");
 
     // Global Settings
     const [sector, setSector] = useState<Sector>("Pub");
@@ -1062,6 +1748,19 @@ export default function GPCalculatorPage() {
 
     const currentGlobalTarget = GPTargets[sector][tier];
     const [showRates, setShowRates] = useState(false);
+
+    // Upload results state (lifted for print access)
+    const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
+    const [uploadGroup, setUploadGroup] = useState<ProductGroup>("Wine");
+
+    // Pro mode detection via URL param (?pro=1)
+    const [isPro, setIsPro] = useState(false);
+    const [showProModal, setShowProModal] = useState(false);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("pro") === "1") setIsPro(true);
+    }, []);
 
     // Load history from localStorage on mount
     useEffect(() => {
@@ -1176,16 +1875,25 @@ export default function GPCalculatorPage() {
                 <div className="flex-1 space-y-6">
                     {/* Tabs */}
                     <div className="flex flex-wrap gap-2 md:gap-4 p-1 bg-white rounded-xl shadow-sm border border-gray-200">
-                        {["Instructions", "Draught", "Spirits", "Wine", "Soft Drinks", "Post Mix"].map((tab) => (
+                        {["Instructions", "Draught", "Spirits", "Wine", "Soft Drinks", "Post Mix", "Upload"].map((tab) => (
                             <button
                                 key={tab}
-                                onClick={() => setActiveTab(tab as any)}
+                                onClick={() => {
+                                    if (tab === "Upload" && !isPro) {
+                                        setShowProModal(true);
+                                        return;
+                                    }
+                                    setActiveTab(tab as any);
+                                }}
                                 className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all ${activeTab === tab
                                     ? "bg-slate-700 text-white shadow-md"
                                     : "text-slate-500 hover:bg-gray-50"
-                                    }`}
+                                    } ${tab === "Upload" && !isPro ? "relative" : ""}`}
                             >
                                 {tab}
+                                {tab === "Upload" && !isPro && (
+                                    <span className="ml-1 text-[10px] bg-amber-400 text-amber-900 px-1.5 py-0.5 rounded-full font-bold uppercase">Pro</span>
+                                )}
                             </button>
                         ))}
                     </div>
@@ -1224,6 +1932,7 @@ export default function GPCalculatorPage() {
                         {activeTab === "Wine" && <WineCalc onSave={addToHistory} initialData={getInitialData("Wine")} defaultGP={currentGlobalTarget["Wine"]} />}
                         {activeTab === "Soft Drinks" && <SoftDrinksCalc onSave={addToHistory} initialData={getInitialData("Soft Drinks")} defaultGP={currentGlobalTarget["Soft Drinks"]} />}
                         {activeTab === "Post Mix" && <PostMixCalc onSave={addToHistory} initialData={getInitialData("Post Mix")} defaultGP={currentGlobalTarget["Post Mix"]} />}
+                        {activeTab === "Upload" && <UploadCalc onSave={addToHistory} defaultGPs={currentGlobalTarget} sector={sector} tier={tier} onResultsChange={(results, group) => { setUploadResults(results); setUploadGroup(group); }} />}
                     </div>
                 </div>
 
@@ -1264,16 +1973,22 @@ export default function GPCalculatorPage() {
 
                                                 if (item.type === "Draught") {
                                                     fields.push(["Rec Pint", d["Recommended Pint"]]);
+                                                    fields.push(["Rec 16oz", d["Recommended 16oz"]]);
+                                                    fields.push(["Rec 12oz", d["Recommended 12oz"]]);
                                                     fields.push(["Rec Half", d["Recommended Half"]]);
+                                                    fields.push(["Rec Dash", d["Recommended Dash"]]);
                                                     fields.push(["Target GP", d["Target GP"]]);
                                                     if (d["Current GP"]) fields.push(["Actual GP", d["Current GP"]]);
                                                 } else if (item.type === "Spirits") {
                                                     fields.push(["Rec 25ml", d["Recommended 25ml"]]);
+                                                    fields.push(["Rec 50ml", d["Recommended 50ml"]]);
                                                     fields.push(["Target GP", d["Target GP"]]);
                                                     if (d["Current GP"]) fields.push(["Actual GP", d["Current GP"]]);
                                                 } else if (item.type === "Wine") {
                                                     fields.push(["Rec Bottle", d["Recommended Bottle"]]);
                                                     fields.push(["Rec 250ml", d["Recommended 250ml"]]);
+                                                    fields.push(["Rec 175ml", d["Recommended 175ml"]]);
+                                                    fields.push(["Rec 125ml", d["Recommended 125ml"]]);
                                                     fields.push(["Target GP", d["Target GP"]]);
                                                 } else if (item.type === "Soft Drinks") {
                                                     fields.push(["Rec Price", d["Recommended Price"]]);
@@ -1281,8 +1996,9 @@ export default function GPCalculatorPage() {
                                                     if (d["Current GP"]) fields.push(["Actual GP", d["Current GP"]]);
                                                 } else if (item.type === "Post Mix") {
                                                     fields.push(["Rec Pint", d["Recommended Pint"]]);
+                                                    fields.push(["Rec Half", d["Recommended Half"]]);
                                                     fields.push(["Target GP", d["Target GP"]]);
-                                                    if (d["Current GP (Pint)"]) fields.push(["Actual GP", d["Current GP (Pint)"]]);
+                                                    if (d["Current GP"]) fields.push(["Actual GP", d["Current GP"]]);
                                                 }
 
                                                 return fields.map(([k, v]) => (
@@ -1304,6 +2020,13 @@ export default function GPCalculatorPage() {
                                 className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 transition"
                             >
                                 PRINT REPORT
+                            </button>
+                            <button
+                                onClick={() => exportHistoryToCSV(history)}
+                                disabled={history.length === 0}
+                                className={`w-full flex items-center justify-center gap-2 font-bold py-2 rounded-lg transition ${history.length > 0 ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+                            >
+                                <Download className="h-4 w-4" /> EXPORT CSV
                             </button>
                             <button
                                 onClick={clearHistory}
@@ -1403,7 +2126,7 @@ export default function GPCalculatorPage() {
                                             };
 
                                             if (type === "Draught") {
-                                                addRow("Pint", d["Recommended Pint"], d["Current Sell Price"], d["New Total Cost (Ex-VAT)"]);
+                                                addRow("Pint", d["Recommended Pint"], d["Current Pint Price (Inc)"], d["New Total Cost (Ex-VAT)"]);
                                                 addRow("Half", d["Recommended Half"], "-", "-");
                                             } else if (type === "Spirits") {
                                                 addRow("25ml", d["Recommended 25ml"], d["Current 25ml Price"], d["Bottle Size"] + " @ " + d["New Bottle Cost (Ex-VAT)"]);
@@ -1416,9 +2139,12 @@ export default function GPCalculatorPage() {
                                             } else if (type === "Soft Drinks") {
                                                 addRow(d["Unit Size"] || "Unit", d["Recommended Price"], d["Current Sell Price"], d["Unit Cost (Ex-VAT)"]);
                                             } else if (type === "Post Mix") {
-                                                addRow("Pint", d["Recommended Pint"], d["Current Pint Price"], "BIB: " + d["BIB Cost (Ex-VAT)"]);
-                                                addRow("Half", d["Recommended Half"], "-", "-");
-                                                addRow("16oz", d["Recommended 16oz"], "-", "-");
+                                                const unit = d["Current Price Unit"] || "Pint";
+                                                addRow(unit, d["Recommended " + unit] || d["Recommended Pint"], d["Current Price"], "BIB: " + d["BIB Cost (Ex-VAT)"]);
+                                                addRow("Pint", d["Recommended Pint"], unit === "Pint" ? d["Current Price"] : "-", "-");
+                                                addRow("Half", d["Recommended Half"], unit === "1/2 Pint" ? d["Current Price"] : "-", "-");
+                                                addRow("16oz", d["Recommended 16oz"], unit === "16oz" ? d["Current Price"] : "-", "-");
+                                                addRow("12oz", d["Recommended 12oz"], unit === "12oz" ? d["Current Price"] : "-", "-");
                                                 addRow("Dash", d["Recommended Dash"], "-", "-");
                                             }
 
@@ -1443,6 +2169,55 @@ export default function GPCalculatorPage() {
                     })}
                 </div>
 
+                {/* Upload Results Print Section */}
+                {uploadResults.length > 0 && (
+                    <div className="break-inside-avoid mt-10">
+                        <h3 className="text-2xl font-black text-slate-800 uppercase border-b-2 border-slate-200 mb-4 pb-2 flex justify-between items-end">
+                            CSV Upload — {uploadGroup}
+                            <span className="text-xs font-normal text-slate-400 mb-1">{uploadResults.length} Products</span>
+                        </h3>
+                        <table className="w-full text-left text-sm">
+                            <thead>
+                                <tr className="border-b border-slate-200 text-slate-400 text-xs uppercase tracking-wider">
+                                    <th className="py-2 font-medium">Product</th>
+                                    <th className="py-2 font-medium text-right">Cost (Ex)</th>
+                                    <th className="py-2 font-medium text-right">Target GP</th>
+                                    <th className="py-2 font-medium text-right">Current (Inc)</th>
+                                    <th className="py-2 font-medium text-right text-blue-600">Rec (Inc)</th>
+                                    <th className="py-2 font-medium text-right">Current GP</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {uploadResults.map((r, idx) => {
+                                    const d = r.details;
+                                    let cost = "-", recPrice = "-", currPrice = "-", currentGP = "-";
+                                    if (r.group === "Draught") {
+                                        cost = d["Current Cost (Ex-VAT)"]; recPrice = d["Recommended Pint"]; currPrice = d["Current Pint Price (Inc)"]; currentGP = d["Current GP"];
+                                    } else if (r.group === "Spirits") {
+                                        cost = d["New Bottle Cost (Ex-VAT)"]; recPrice = d["Recommended 25ml"]; currPrice = d["Current 25ml Price"]; currentGP = d["Current GP"];
+                                    } else if (r.group === "Wine") {
+                                        cost = d["New Btl Cost (Ex-VAT)"]; recPrice = d["Recommended Bottle"]; currPrice = d["Current Bottle Price"]; currentGP = d["Current GP (Btl)"];
+                                    } else if (r.group === "Soft Drinks") {
+                                        cost = d["Unit Cost (Ex-VAT)"]; recPrice = d["Recommended Price"]; currPrice = d["Current Sell Price"]; currentGP = d["Current GP"];
+                                    } else if (r.group === "Post Mix") {
+                                        cost = d["BIB Cost (Ex-VAT)"]; recPrice = d["Recommended Pint"]; currPrice = d["Current Price"] + " (" + (d["Current Price Unit"] || "Pint") + ")"; currentGP = d["Current GP"];
+                                    }
+                                    return (
+                                        <tr key={idx}>
+                                            <td className="py-3 font-bold text-slate-800">{r.product}</td>
+                                            <td className="py-3 text-right text-slate-600 font-mono text-xs">{cost}</td>
+                                            <td className="py-3 text-right text-slate-600">{d["Target GP"]}</td>
+                                            <td className="py-3 text-right font-medium text-slate-700">{currPrice}</td>
+                                            <td className="py-3 text-right font-bold text-blue-600">{recPrice}</td>
+                                            <td className="py-3 text-right text-slate-600">{currentGP}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
                 {/* Footer Totals / Disclaimer */}
                 <div className="mt-12 pt-6 border-t border-slate-200 grid grid-cols-2 gap-8">
                     <div>
@@ -1458,9 +2233,46 @@ export default function GPCalculatorPage() {
                 </div>
             </div>
 
-            <footer className="print:hidden text-center text-slate-400 text-sm mt-8">
-                © 2026 Whole Hospitality | Professional Backend Solutions
+            <footer className="print:hidden text-center text-slate-400 text-sm mt-8 pb-6 space-y-2">
+                <p>Powered by <strong className="text-slate-500">Whole Hospitality</strong> · Developed by <a href="https://itsmyapp.co.uk" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-slate-700 underline underline-offset-2 transition-colors">itsmyapp.co.uk</a></p>
+                <div className="flex items-center justify-center gap-2">
+                    <img src="/itsmyapp_logo.png" alt="ItsMyApp" className="h-5 w-auto opacity-60" />
+                    <span>© 2026</span>
+                </div>
             </footer>
+
+            {/* Pro Modal */}
+            {showProModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowProModal(false)}>
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center" onClick={e => e.stopPropagation()}>
+                        <div className="bg-amber-100 text-amber-600 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
+                            <Upload className="h-8 w-8" />
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-800 mb-2">GP Calculator Pro</h3>
+                        <p className="text-slate-500 mb-6 text-sm leading-relaxed">
+                            CSV Batch Upload is a <strong>Pro feature</strong>. Upload entire product lists, calculate prices in bulk, and export results — all in seconds.
+                        </p>
+                        <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left text-sm space-y-2">
+                            <div className="flex items-center gap-2 text-slate-700"><span className="text-green-500">✓</span> Batch upload via CSV</div>
+                            <div className="flex items-center gap-2 text-slate-700"><span className="text-green-500">✓</span> All product groups supported</div>
+                            <div className="flex items-center gap-2 text-slate-700"><span className="text-green-500">✓</span> Export & print results</div>
+                            <div className="flex items-center gap-2 text-slate-700"><span className="text-green-500">✓</span> Add all to session history</div>
+                        </div>
+                        <a
+                            href="mailto:info@wholehospitality.co.uk?subject=GP Calculator Pro Enquiry"
+                            className="block w-full bg-amber-500 text-white font-bold py-3 rounded-lg hover:bg-amber-600 transition-colors mb-3"
+                        >
+                            Enquire About Pro
+                        </a>
+                        <button
+                            onClick={() => setShowProModal(false)}
+                            className="text-slate-400 text-sm hover:text-slate-600 transition-colors"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }
