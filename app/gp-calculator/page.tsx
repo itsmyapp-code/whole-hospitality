@@ -110,16 +110,13 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
         setGp(defaultGP.toString());
     }, [defaultGP]);
 
-    const [result, setResult] = useState<null | {
+    const [result, setResult] = useState<{
         newTotal: number;
         pint: number;
-        p16oz: number;
-        p12oz: number;
         half: number;
-        dash: number;
         currentGP: number | null;
         marginUplift: number | null;
-    }>(null);
+    } | null>(null);
 
     const calculate = () => {
         const prodName = name.trim() || "Draught";
@@ -169,10 +166,7 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
         const calcPrice = (ml: number) => smartRound(((costPerMl * ml) / (1 - targetGp / 100)) * 1.20);
 
         const recommPint = calcPrice(568);
-        const recomm16oz = calcPrice(454);
-        const recomm12oz = calcPrice(341);
         const recommHalf = calcPrice(284);
-        const recommDash = calcPrice(50);
 
         // --- Reality Check & Analytics ---
         const currSell = parseFloat(currentPrice) || 0;
@@ -194,10 +188,7 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
         setResult({
             newTotal: forecastTotal,
             pint: recommPint,
-            p16oz: recomm16oz,
-            p12oz: recomm12oz,
             half: recommHalf,
-            dash: recommDash,
             currentGP: currentGP,
             marginUplift: marginUplift
         });
@@ -221,10 +212,7 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                 "Current Pint Price (Inc)": currSell > 0 ? `£${currSell.toFixed(2)}` : "-",
                 "Current GP": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
                 "Recommended Pint": `£${recommPint.toFixed(2)}`,
-                "Recommended 16oz": `£${recomm16oz.toFixed(2)}`,
-                "Recommended 12oz": `£${recomm12oz.toFixed(2)}`,
                 "Recommended Half": `£${recommHalf.toFixed(2)}`,
-                "Recommended Dash": `£${recommDash.toFixed(2)}`,
             },
         };
         onSave(item);
@@ -297,23 +285,8 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                             </div>
                             <div className="hidden md:block w-px bg-slate-200"></div>
                             <div className="flex flex-col items-center">
-                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">16oz</span>
-                                <span>£{result.p16oz.toFixed(2)}</span>
-                            </div>
-                            <div className="hidden md:block w-px bg-slate-200"></div>
-                            <div className="flex flex-col items-center">
-                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">12oz</span>
-                                <span>£{result.p12oz.toFixed(2)}</span>
-                            </div>
-                            <div className="hidden md:block w-px bg-slate-200"></div>
-                            <div className="flex flex-col items-center">
                                 <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">Half</span>
                                 <span>£{result.half.toFixed(2)}</span>
-                            </div>
-                            <div className="hidden md:block w-px bg-slate-200"></div>
-                            <div className="flex flex-col items-center">
-                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">Dash</span>
-                                <span>£{result.dash.toFixed(2)}</span>
                             </div>
                             <div className="hidden md:block w-px bg-slate-200"></div>
                             <div className="flex flex-col items-center">
@@ -1521,10 +1494,7 @@ const calculateRow = (row: Record<string, string>, group: ProductGroup, defaultG
             "Current Pint Price (Inc)": currSell > 0 ? `£${currSell.toFixed(2)}` : "-",
             "Current GP": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
             "Recommended Pint": `£${recommPint.toFixed(2)}`,
-            "Recommended 16oz": `£${recomm16oz.toFixed(2)}`,
-            "Recommended 12oz": `£${recomm12oz.toFixed(2)}`,
             "Recommended Half": `£${recommHalf.toFixed(2)}`,
-            "Recommended Dash": `£${recommDash.toFixed(2)}`,
         };
 
         return {
@@ -1973,10 +1943,7 @@ export default function GPCalculatorPage() {
 
                                                 if (item.type === "Draught") {
                                                     fields.push(["Rec Pint", d["Recommended Pint"]]);
-                                                    fields.push(["Rec 16oz", d["Recommended 16oz"]]);
-                                                    fields.push(["Rec 12oz", d["Recommended 12oz"]]);
                                                     fields.push(["Rec Half", d["Recommended Half"]]);
-                                                    fields.push(["Rec Dash", d["Recommended Dash"]]);
                                                     fields.push(["Target GP", d["Target GP"]]);
                                                     if (d["Current GP"]) fields.push(["Actual GP", d["Current GP"]]);
                                                 } else if (item.type === "Spirits") {
@@ -1996,7 +1963,10 @@ export default function GPCalculatorPage() {
                                                     if (d["Current GP"]) fields.push(["Actual GP", d["Current GP"]]);
                                                 } else if (item.type === "Post Mix") {
                                                     fields.push(["Rec Pint", d["Recommended Pint"]]);
+                                                    fields.push(["Rec 16oz", d["Recommended 16oz"]]);
+                                                    fields.push(["Rec 12oz", d["Recommended 12oz"]]);
                                                     fields.push(["Rec Half", d["Recommended Half"]]);
+                                                    fields.push(["Rec Dash", d["Recommended Dash"]]);
                                                     fields.push(["Target GP", d["Target GP"]]);
                                                     if (d["Current GP"]) fields.push(["Actual GP", d["Current GP"]]);
                                                 }
