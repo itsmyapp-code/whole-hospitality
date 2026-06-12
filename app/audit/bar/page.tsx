@@ -5,29 +5,14 @@ import BarStealthCamera, { BarStealthCameraRef } from "./BarStealthCamera";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-// Mock data for the "Live Feed"
-const MOCK_ARTICLE = [
-  { id: 1, text: "The local council has announced a new initiative to improve street lighting in the central district." },
-  { id: 2, text: "Residents have reported a significant decrease in traffic congestion since the new roundabout was completed." },
-  { id: 3, text: "The upcoming community fair is expected to draw thousands of visitors to the park this weekend." },
-  { id: 4, text: "In sports news, the regional team secured a decisive victory in their latest away match." },
-  { id: 5, text: "Temperatures are expected to drop slightly over the next few days, bringing scattered showers." },
-  { id: 6, text: "A new public transport timetable will come into effect starting next Monday." },
-  { id: 7, text: "Local businesses are preparing for the annual summer festival, which begins in two weeks." },
-];
-
 export default function CovertAuditPage() {
   const [isPanicked, setIsPanicked] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
   
   // Auditor Info State
   const [siteName, setSiteName] = useState("");
   const [auditorName, setAuditorName] = useState("");
 
-  // Visual Feedback State
-  const [flashFeedback, setFlashFeedback] = useState(false);
-
-  // Audit Metrics State (Now logs exact timestamps)
+  // Audit Metrics State
   const [metrics, setMetrics] = useState({
     freePours: [] as string[],
     incorrectMeasures: [] as string[],
@@ -42,85 +27,26 @@ export default function CovertAuditPage() {
   const [greetTimerStart, setGreetTimerStart] = useState<number | null>(null);
   const [serveTimerStart, setServeTimerStart] = useState<number | null>(null);
 
-  // Interaction State
-  const [navTapCount, setNavTapCount] = useState(0);
-  const [debugTapCount, setDebugTapCount] = useState(0);
-  const navTapTimeout = useRef<NodeJS.Timeout | null>(null);
-  const debugTapTimeout = useRef<NodeJS.Timeout | null>(null);
-  const longPressTimeout = useRef<NodeJS.Timeout | null>(null);
-
   const cameraRef = useRef<BarStealthCameraRef>(null);
-
-  // Cleanup timers on unmount
-  useEffect(() => {
-    return () => {
-      if (navTapTimeout.current) clearTimeout(navTapTimeout.current);
-      if (debugTapTimeout.current) clearTimeout(debugTapTimeout.current);
-      if (longPressTimeout.current) clearTimeout(longPressTimeout.current);
-    };
-  }, []);
-
-  // Panic Switch Trigger (Triple Tap on Nav)
-  const handleNavTap = () => {
-    setNavTapCount((prev) => prev + 1);
-    if (navTapTimeout.current) clearTimeout(navTapTimeout.current);
-    
-    navTapTimeout.current = setTimeout(() => {
-      if (navTapCount >= 2) { // 3 taps
-        setIsPanicked(true);
-      }
-      setNavTapCount(0);
-    }, 400);
-  };
-
-  // Debug Panel Trigger (5 Taps on hidden footer)
-  const handleDebugTap = () => {
-    setDebugTapCount((prev) => prev + 1);
-    if (debugTapTimeout.current) clearTimeout(debugTapTimeout.current);
-    
-    debugTapTimeout.current = setTimeout(() => {
-      if (debugTapCount >= 4) { // 5 taps
-        setShowDebug((prev) => !prev);
-      }
-      setDebugTapCount(0);
-    }, 500);
-  };
-
-  const provideFeedback = () => {
-    // 1. Haptic Vibration (works on most mobile devices)
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate(50);
-    }
-    // 2. Subtle Visual Flash
-    setFlashFeedback(true);
-    setTimeout(() => setFlashFeedback(false), 300);
-  };
 
   // Triggers
   const logFreePour = () => {
-    provideFeedback();
     setMetrics(prev => ({ ...prev, freePours: [...prev.freePours, new Date().toISOString()] }));
   };
 
-  const logIncorrectMeasure = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    provideFeedback();
+  const logIncorrectMeasure = () => {
     setMetrics(prev => ({ ...prev, incorrectMeasures: [...prev.incorrectMeasures, new Date().toISOString()] }));
   };
 
   const logNoRingIn = () => {
-    provideFeedback();
     setMetrics(prev => ({ ...prev, noRingIns: [...prev.noRingIns, new Date().toISOString()] }));
   };
 
   const logChargeDiscrepancy = () => {
-    provideFeedback();
     setMetrics(prev => ({ ...prev, chargeDiscrepancies: [...prev.chargeDiscrepancies, new Date().toISOString()] }));
   };
 
-  const toggleGreetTimer = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    provideFeedback();
+  const toggleGreetTimer = () => {
     if (greetTimerStart) {
       const elapsed = Math.round((Date.now() - greetTimerStart) / 1000);
       setMetrics(prev => ({ 
@@ -134,7 +60,6 @@ export default function CovertAuditPage() {
   };
 
   const toggleServeTimer = () => {
-    provideFeedback();
     if (serveTimerStart) {
       const elapsed = Math.round((Date.now() - serveTimerStart) / 1000);
       setMetrics(prev => ({ 
@@ -148,23 +73,9 @@ export default function CovertAuditPage() {
   };
 
   const triggerCamera = () => {
-    provideFeedback();
     if (cameraRef.current) {
       cameraRef.current.capturePhoto();
       setMetrics(prev => ({ ...prev, photosTaken: prev.photosTaken + 1 }));
-    }
-  };
-
-  // Touch Handlers for Long Press
-  const handleTouchStart = () => {
-    longPressTimeout.current = setTimeout(() => {
-      logNoRingIn();
-    }, 800); // 800ms long press
-  };
-
-  const handleTouchEnd = () => {
-    if (longPressTimeout.current) {
-      clearTimeout(longPressTimeout.current);
     }
   };
 
@@ -251,7 +162,6 @@ export default function CovertAuditPage() {
           doc.setFontSize(10);
           doc.text(`Evidence #${index + 1} - Captured: ${cap.timestamp}`, 14, yPos);
           
-          // Image proportions (16:9 approx or scaled to fit width)
           doc.addImage(cap.dataUrl, 'JPEG', 14, yPos + 5, 120, 90);
           yPos += 105;
         });
@@ -261,13 +171,13 @@ export default function CovertAuditPage() {
     }
 
     // Download
-    const filename = `Audit_${siteName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    const filename = `Audit_${siteName.replace(/\s+/g, '_') || 'Report'}_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
   };
 
   if (isPanicked) {
     return (
-      <div className="min-h-screen bg-white text-black p-4 font-sans">
+      <div className="min-h-screen bg-white text-black p-4 font-sans" onClick={() => setIsPanicked(false)}>
         <header className="border-b pb-2 mb-4">
           <h1 className="text-xl font-bold">Local Weather & Transit</h1>
           <p className="text-sm text-gray-500">Updated: Just now</p>
@@ -282,165 +192,145 @@ export default function CovertAuditPage() {
             <p>The 42A service is running approximately 5 minutes late due to roadworks on Main Street.</p>
           </section>
         </main>
-        <button 
-          onClick={() => setIsPanicked(false)} 
-          className="mt-12 text-xs text-white opacity-10"
-        >
-          reset
-        </button>
+        <div className="mt-12 text-xs text-center text-gray-200">
+          (Tap anywhere to un-hide)
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-400 font-sans selection:bg-neutral-800 relative">
-      {/* Subtle Visual Feedback Dot */}
-      <div 
-        className={`fixed top-1 left-1 w-1 h-1 rounded-full z-50 transition-opacity duration-100 ${flashFeedback ? 'opacity-100 bg-neutral-500' : 'opacity-0 bg-transparent'}`} 
-      />
-
-      {/* Top Nav - Panic Switch */}
-      <nav 
-        onClick={handleNavTap}
-        className="sticky top-0 z-10 bg-neutral-950/90 backdrop-blur border-b border-neutral-900 p-4 flex items-center justify-between cursor-default"
-      >
-        <div className="flex flex-col">
-          <span className="text-sm font-semibold tracking-wide text-neutral-300">City News Live</span>
-          <span className="text-xs text-neutral-600">Continuous Feed</span>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <button onClick={toggleGreetTimer} className="p-2 opacity-50 active:opacity-100 transition-opacity">
-            <svg className={`w-4 h-4 ${greetTimerStart ? 'text-blue-500' : 'text-neutral-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
-          
-          <div onClick={triggerCamera} className="active:scale-95 transition-transform">
-            <BarStealthCamera ref={cameraRef} />
-          </div>
-        </div>
-      </nav>
-
-      <main className="p-4 space-y-6">
-        <div onClick={toggleServeTimer} className="flex items-center gap-2 cursor-default opacity-60 active:opacity-100">
-          <div className={`w-2 h-2 rounded-full ${serveTimerStart ? 'bg-red-900' : 'bg-neutral-800'}`}></div>
-          <span className="text-xs uppercase tracking-wider">By J. Doe • {new Date().toLocaleDateString()}</span>
-        </div>
-
-        <div 
-          onClick={logFreePour} 
-          className="text-lg leading-relaxed text-neutral-300 cursor-default active:bg-neutral-900 rounded p-1 transition-colors -mx-1"
+    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans p-4 pb-20">
+      
+      {/* Panic Button */}
+      <div className="sticky top-0 z-50 mb-6 -mx-4 -mt-4 p-4 bg-slate-900/90 backdrop-blur border-b border-slate-800">
+        <button 
+          onClick={() => setIsPanicked(true)}
+          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-lg shadow-lg text-lg uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
         >
-          <p>Early reports indicate a shift in the local economic landscape as new businesses register in the city center.</p>
-        </div>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+          PANIC / HIDE SCREEN
+        </button>
+      </div>
 
-        <div className="space-y-4 pt-4 border-t border-neutral-900">
-          {MOCK_ARTICLE.map((item, index) => (
-            <div 
-              key={item.id}
-              className="flex items-start gap-3 p-2 -mx-2 rounded cursor-default active:bg-neutral-900 transition-colors"
-              onDoubleClick={logChargeDiscrepancy}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-              onMouseDown={handleTouchStart}
-              onMouseUp={handleTouchEnd}
-              onMouseLeave={handleTouchEnd}
-            >
-              <div className="text-xs text-neutral-600 font-mono mt-1 w-8 flex-shrink-0">
-                19:{String(45 + index).padStart(2, '0')}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm leading-relaxed">{item.text}</p>
-                
-                <div className="mt-2 flex items-center gap-4">
-                  <button onClick={logIncorrectMeasure} className="flex items-center gap-1 text-xs text-neutral-600 active:text-neutral-400 p-1 -ml-1">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                    </svg>
-                    Share
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </main>
-
-      {/* Hidden footer area for Debug Panel */}
-      <div 
-        onClick={handleDebugTap}
-        className="fixed bottom-0 left-0 w-full h-16 bg-transparent"
-      />
-
-      {/* Admin Panel */}
-      {showDebug && (
-        <div className="fixed inset-0 bg-black/95 z-50 p-6 overflow-y-auto text-green-500 font-mono text-sm">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold">Audit Settings & Export</h2>
-            <button onClick={() => setShowDebug(false)} className="px-3 py-1 bg-green-900 text-green-400 rounded">Close</button>
+      <header className="mb-6 space-y-4">
+        <h1 className="text-2xl font-bold text-white">Bar Audit Dashboard</h1>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs uppercase text-slate-400 mb-1">Site Name</label>
+            <input 
+              type="text" 
+              value={siteName}
+              onChange={e => setSiteName(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white"
+              placeholder="E.g. The Red Lion"
+            />
           </div>
+          <div>
+            <label className="block text-xs uppercase text-slate-400 mb-1">Auditor Name</label>
+            <input 
+              type="text" 
+              value={auditorName}
+              onChange={e => setAuditorName(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white"
+              placeholder="E.g. John Doe"
+            />
+          </div>
+        </div>
+      </header>
 
-          <div className="space-y-6">
-            {/* Setup Form */}
-            <div className="border border-green-900 p-4 rounded space-y-4 bg-green-950/20">
-              <h3 className="uppercase text-green-700 font-bold">1. Session Details</h3>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-green-600 uppercase">Site Name</label>
-                <input 
-                  type="text" 
-                  value={siteName}
-                  onChange={(e) => setSiteName(e.target.value)}
-                  placeholder="e.g. The Red Lion" 
-                  className="bg-black border border-green-900 p-2 rounded text-green-400 outline-none focus:border-green-500"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-green-600 uppercase">Auditor Name</label>
-                <input 
-                  type="text" 
-                  value={auditorName}
-                  onChange={(e) => setAuditorName(e.target.value)}
-                  placeholder="e.g. John Doe" 
-                  className="bg-black border border-green-900 p-2 rounded text-green-400 outline-none focus:border-green-500"
-                />
-              </div>
-            </div>
+      <div className="space-y-6">
+        
+        {/* Actions Grid */}
+        <section>
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Log Infractions</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={logFreePour} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all text-center">
+              <span className="text-2xl">🥃</span>
+              <span className="font-semibold text-sm">Free Pour</span>
+              <span className="text-xs text-slate-400">{metrics.freePours.length} logged</span>
+            </button>
+            <button onClick={logIncorrectMeasure} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all text-center">
+              <span className="text-2xl">⚖️</span>
+              <span className="font-semibold text-sm">Wrong Measure</span>
+              <span className="text-xs text-slate-400">{metrics.incorrectMeasures.length} logged</span>
+            </button>
+            <button onClick={logNoRingIn} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all text-center">
+              <span className="text-2xl">💷</span>
+              <span className="font-semibold text-sm">No Ring-In</span>
+              <span className="text-xs text-slate-400">{metrics.noRingIns.length} logged</span>
+            </button>
+            <button onClick={logChargeDiscrepancy} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all text-center">
+              <span className="text-2xl">📉</span>
+              <span className="font-semibold text-sm">Over/Under Charge</span>
+              <span className="text-xs text-slate-400">{metrics.chargeDiscrepancies.length} logged</span>
+            </button>
+          </div>
+        </section>
 
-            {/* Export Action */}
-            <div className="border border-green-900 p-4 rounded text-center">
+        {/* Timers */}
+        <section>
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Service Timers</h2>
+          <div className="space-y-3">
+            <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-center justify-between">
+              <div>
+                <span className="font-semibold block">Time to Greet</span>
+                <span className="text-xs text-slate-400">{metrics.timeToGreetSecs.length} recorded</span>
+              </div>
               <button 
-                onClick={exportPDF}
-                className="w-full py-3 bg-green-700 text-black font-bold uppercase tracking-widest rounded active:bg-green-600 transition-colors"
+                onClick={toggleGreetTimer}
+                className={`px-6 py-2 rounded-lg font-bold shadow-sm active:scale-95 transition-all ${greetTimerStart ? 'bg-amber-500 text-black' : 'bg-blue-600 text-white'}`}
               >
-                Generate PDF Report
+                {greetTimerStart ? 'STOP' : 'START'}
               </button>
-              <p className="text-xs text-green-800 mt-2">Downloads an encrypted chronological log to your device</p>
             </div>
-          
-            {/* Live Stats summary */}
-            <div className="border border-green-900 p-4 rounded opacity-75">
-              <h3 className="uppercase text-green-700 mb-2">Current Totals</h3>
-              <ul className="space-y-2 grid grid-cols-2 text-xs">
-                <li>Free Pours: {metrics.freePours.length}</li>
-                <li>Incorrect Meas: {metrics.incorrectMeasures.length}</li>
-                <li>No Ring-Ins: {metrics.noRingIns.length}</li>
-                <li>Charge Discrepancies: {metrics.chargeDiscrepancies.length}</li>
-                <li>Photos Taken: {metrics.photosTaken}</li>
-              </ul>
-              <div className="mt-4 flex justify-between border-t border-green-900 pt-2">
-                <span>Clear Storage</span>
-                <button 
-                  onClick={() => { localStorage.removeItem('audit_captures'); setMetrics(m => ({...m, photosTaken: 0}))}}
-                  className="text-red-500"
-                >
-                  [ ERASE ]
-                </button>
+            
+            <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-center justify-between">
+              <div>
+                <span className="font-semibold block">Time to Serve</span>
+                <span className="text-xs text-slate-400">{metrics.timeToServeSecs.length} recorded</span>
               </div>
+              <button 
+                onClick={toggleServeTimer}
+                className={`px-6 py-2 rounded-lg font-bold shadow-sm active:scale-95 transition-all ${serveTimerStart ? 'bg-amber-500 text-black' : 'bg-blue-600 text-white'}`}
+              >
+                {serveTimerStart ? 'STOP' : 'START'}
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        </section>
+
+        {/* Evidence */}
+        <section>
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Evidence</h2>
+          <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center gap-4">
+            {/* Hidden camera preview */}
+            <div className="hidden">
+              <BarStealthCamera ref={cameraRef} />
+            </div>
+            <button 
+              onClick={triggerCamera}
+              className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 py-3 rounded-lg font-bold flex items-center justify-center gap-2 active:scale-95 transition-all"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              TAKE PHOTO EVIDENCE
+            </button>
+            <span className="text-xs text-slate-400">{metrics.photosTaken} photos taken this session</span>
+          </div>
+        </section>
+
+        {/* Export */}
+        <section className="pt-4">
+          <button 
+            onClick={exportPDF}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-lg shadow-lg text-lg uppercase tracking-wider transition-colors"
+          >
+            End Audit & Export PDF
+          </button>
+        </section>
+
+      </div>
     </div>
   );
 }
