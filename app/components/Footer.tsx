@@ -7,8 +7,10 @@ export default function Footer() {
                     <p className="text-sm">Powered by Whole Hospitality</p>
                 </div>
 
-                <div className="flex gap-8 text-sm">
-                    <a href="#" className="hover:text-white transition-colors">Contact</a>
+                <div className="flex flex-wrap gap-6 text-sm">
+                    <a href="/#contact" className="hover:text-white transition-colors">Contact</a>
+                    <a href="/audit/bar" className="hover:text-emerald-400 font-medium transition-colors">Start Audit App</a>
+                    <a href="/legal/compliance-framework" className="hover:text-white transition-colors">Legal & Compliance</a>
                     <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
                     <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
                 </div>
