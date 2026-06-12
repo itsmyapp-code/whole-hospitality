@@ -306,7 +306,7 @@ export default function CovertAuditPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans p-4 pb-20">
+    <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900 text-slate-100 font-sans p-4 pb-20">
       
       {/* Stealthy Panic Button */}
       <div className="sticky top-0 z-50 mb-6 -mx-4 -mt-4 bg-slate-950/90 backdrop-blur border-b border-slate-900">
