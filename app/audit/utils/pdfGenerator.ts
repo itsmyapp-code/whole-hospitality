@@ -207,7 +207,7 @@ export const generateUniversalPDF = async (data: PdfExportData) => {
   
   if (data.moduleType === "BAR") {
     glossaryData = [
-      [{ content: "🔴 Negative Infractions", styles: { fontStyle: 'bold', textColor: [220, 38, 38], fontSize: 12 } }],
+      [{ content: "[NEGATIVE INFRACTIONS]", styles: { fontStyle: 'bold', textColor: [220, 38, 38], fontSize: 12 } }],
       ["Free Pours: Serving drinks without a jigger/optic."],
       ["Incorrect Measure: Using wrong measure size (e.g., 50ml instead of 25ml)."],
       ["No Ring In: Taking cash but never entering the sale into the till."],
@@ -220,7 +220,7 @@ export const generateUniversalPDF = async (data: PdfExportData) => {
       ["Eating/Drinking: Consuming food/drink behind the bar."],
       ["Underage Staff Serving: Under 18 serving alcohol without supervision."],
       ["No ID Check: Failing to Challenge 25 young patrons."],
-      [{ content: "🟢 Positive Observations", styles: { fontStyle: 'bold', textColor: [16, 185, 129], fontSize: 12, cellPadding: { top: 10 } } }],
+      [{ content: "[POSITIVE OBSERVATIONS]", styles: { fontStyle: 'bold', textColor: [16, 185, 129], fontSize: 12, cellPadding: { top: 10 } } }],
       ["Immediate Ring-In: Entering transactions the exact moment cash is taken."],
       ["Consistent Till Closure: Keeping the drawer shut between transactions."],
       ["Accurate Change: Visually counting back change to customers."],
@@ -236,28 +236,28 @@ export const generateUniversalPDF = async (data: PdfExportData) => {
     ];
   } else if (data.moduleType === "RESTAURANT") {
     glossaryData = [
-      [{ content: "🔴 Negative Infractions", styles: { fontStyle: 'bold', textColor: [220, 38, 38], fontSize: 12 } }],
+      [{ content: "[NEGATIVE INFRACTIONS]", styles: { fontStyle: 'bold', textColor: [220, 38, 38], fontSize: 12 } }],
       ["Off-Pocket Cash: Settling a bill with cash that goes into an apron, not the till."],
       ["Unrecorded Item Upgrade: e.g., Adding truffle fries without charging the supplement."],
       ["Table Squatting Delay: Ignoring a table that clearly wants to pay and leave."],
       ["Unauthorized Comps: Giving away desserts or drinks without manager approval."],
       ["Till Left Open: Leaving the POS cash drawer unlocked."],
       ["Menu Price Discrepancy: Charging a different price than listed on the menu."],
-      [{ content: "🟢 Positive Observations", styles: { fontStyle: 'bold', textColor: [16, 185, 129], fontSize: 12, cellPadding: { top: 10 } } }],
+      [{ content: "[POSITIVE OBSERVATIONS]", styles: { fontStyle: 'bold', textColor: [16, 185, 129], fontSize: 12, cellPadding: { top: 10 } } }],
       ["Allergen Verification: Explicitly asking guests about allergies before taking the order."],
       ["High-Margin Upselling: Suggesting sides, bottled water, or premium pairings."],
       ["Bill Accuracy: Delivering the bill with 100% correct items."]
     ];
   } else if (data.moduleType === "HOTEL") {
     glossaryData = [
-      [{ content: "🔴 Negative Infractions", styles: { fontStyle: 'bold', textColor: [220, 38, 38], fontSize: 12 } }],
+      [{ content: "[NEGATIVE INFRACTIONS]", styles: { fontStyle: 'bold', textColor: [220, 38, 38], fontSize: 12 } }],
       ["Cash Upgrade Leak: Taking cash for a room upgrade and pocketing it."],
       ["ID/Immigration Fail: Failing to scan or record required passports for foreign guests."],
       ["Guest Data Exposure: Leaving guest registration cards or screens visible to the public."],
       ["Deep-Clean Oversight: Missing obvious cleanliness issues in common areas or rooms."],
       ["Amenities Malfunction: Broken keycards, missing towels, or empty soap dispensers not actioned."],
       ["Unattended Desk: Leaving the front desk entirely empty without a 'back in 5 mins' sign."],
-      [{ content: "🟢 Positive Observations", styles: { fontStyle: 'bold', textColor: [16, 185, 129], fontSize: 12, cellPadding: { top: 10 } } }],
+      [{ content: "[POSITIVE OBSERVATIONS]", styles: { fontStyle: 'bold', textColor: [16, 185, 129], fontSize: 12, cellPadding: { top: 10 } } }],
       ["Loyalty Program Push: Actively encouraging sign-ups for the hotel rewards program."],
       ["Preemptive Concierge: Offering maps, dining tips, or umbrella assistance before being asked."],
       ["Express Departure: Executing a flawless, rapid check-out process."]

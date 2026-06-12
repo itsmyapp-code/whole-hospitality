@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { exportConfigToken, importConfigToken, getActiveConfiguration, setActiveConfiguration } from "./utils/configMigration";
 
 export default function AuditHub() {
   const router = useRouter();
@@ -9,8 +10,51 @@ export default function AuditHub() {
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  
+  const [importTokenText, setImportTokenText] = useState("");
+  const [configMessage, setConfigMessage] = useState("");
+  const [isError, setIsError] = useState(false);
   
   const [pendingRoute, setPendingRoute] = useState<string | null>(null);
+
+  const showMessage = (msg: string, error = false) => {
+    setConfigMessage(msg);
+    setIsError(error);
+    setTimeout(() => setConfigMessage(""), 4000);
+  };
+
+  const handleExportConfig = async () => {
+    const config = getActiveConfiguration();
+    const token = exportConfigToken(config);
+    if (!token) {
+      showMessage("Failed to generate token.", true);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(token);
+      showMessage("Token copied to clipboard!");
+    } catch (err) {
+      // Fallback for devices where clipboard might fail
+      showMessage("Token generated. Please copy manually.", false);
+      setImportTokenText(token);
+    }
+  };
+
+  const handleImportConfig = () => {
+    if (!importTokenText.trim()) {
+      showMessage("Please paste a token first.", true);
+      return;
+    }
+    const payload = importConfigToken(importTokenText);
+    if (!payload) {
+      showMessage("Invalid or corrupted token.", true);
+      return;
+    }
+    setActiveConfiguration(payload);
+    showMessage("Configuration imported successfully!");
+    setImportTokenText("");
+  };
 
   const CORRECT_PIN = "1234";
 
@@ -120,6 +164,13 @@ export default function AuditHub() {
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             Help & Metric Glossary
+          </button>
+          <button 
+            onClick={() => setShowConfigModal(true)}
+            className="text-slate-500 hover:text-slate-300 text-sm font-medium flex items-center gap-2 transition-colors border border-slate-800 hover:border-slate-600 px-4 py-2 rounded-full ml-4"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            Configuration Manager
           </button>
         </div>
       </div>
@@ -299,6 +350,68 @@ export default function AuditHub() {
                   </div>
                 </section>
 
+              </div>
+            </div>
+          </div>
+      )}
+
+      {/* Configuration Modal */}
+      {showConfigModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 rounded-t-2xl">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Configuration Manager
+              </h2>
+              <button onClick={() => setShowConfigModal(false)} className="text-slate-500 hover:text-white transition-colors">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {configMessage && (
+                <div className={`p-3 rounded-lg text-sm border ${isError ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
+                  {configMessage}
+                </div>
+              )}
+              
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white mb-2">Export Configuration</h3>
+                  <p className="text-xs text-slate-400 mb-3">
+                    Copy your local metrics, default venue, and staff profiles to migrate them to another device. No photos or timestamps are exported.
+                  </p>
+                  <button 
+                    onClick={handleExportConfig}
+                    className="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-3 rounded-xl transition-colors text-sm border border-slate-700"
+                  >
+                    Export Configuration Token
+                  </button>
+                </div>
+                
+                <hr className="border-slate-800" />
+                
+                <div>
+                  <h3 className="text-sm font-bold text-white mb-2">Import Configuration</h3>
+                  <p className="text-xs text-slate-400 mb-3">
+                    Paste a Base64 Configuration Token below to overwrite your local templates.
+                  </p>
+                  <div className="space-y-2">
+                    <textarea 
+                      value={importTokenText}
+                      onChange={e => setImportTokenText(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-300 text-xs font-mono focus:outline-none focus:border-slate-600 h-24 resize-none"
+                      placeholder="Paste Token Here..."
+                    />
+                    <button 
+                      onClick={handleImportConfig}
+                      className="w-full bg-[#0a84ff] hover:bg-blue-500 text-white font-medium py-3 rounded-xl transition-colors text-sm"
+                    >
+                      Import Configuration
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
