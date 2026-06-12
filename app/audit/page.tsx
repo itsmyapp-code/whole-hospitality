@@ -8,6 +8,7 @@ export default function AuditHub() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   
   const [pendingRoute, setPendingRoute] = useState<string | null>(null);
 
@@ -111,6 +112,16 @@ export default function AuditHub() {
             <span className="font-semibold text-slate-300 text-center">Hotel & Guest<br/>Services</span>
           </button>
         </div>
+
+        <div className="flex justify-center mt-8">
+          <button 
+            onClick={() => setShowHelpModal(true)}
+            className="text-slate-500 hover:text-slate-300 text-sm font-medium flex items-center gap-2 transition-colors border border-slate-800 hover:border-slate-600 px-4 py-2 rounded-full"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            Help & Metric Glossary
+          </button>
+        </div>
       </div>
 
       {/* Compliance Modal */}
@@ -158,6 +169,137 @@ export default function AuditHub() {
               >
                 I AGREE & UNDERSTAND
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Help Modal */}
+      {showHelpModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 rounded-t-2xl shrink-0">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Metric Glossary & System Help
+              </h2>
+              <button onClick={() => setShowHelpModal(false)} className="text-slate-500 hover:text-white transition-colors p-2 bg-slate-800 rounded-full">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto text-sm text-slate-300 leading-relaxed custom-scrollbar">
+              
+              <div className="mb-8 bg-blue-900/10 border border-blue-900/30 p-4 rounded-xl text-blue-200">
+                <h3 className="font-bold text-blue-400 mb-2 text-base">How to use the Audit Tool covertly:</h3>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li><strong>Adding Targets:</strong> When you tap "New Message (Add Target)", the screen mimics the iOS iMessage app. You can type the staff name or description (e.g. "Table 4") and hit Send. It acts as a perfect cover if someone looks over your shoulder.</li>
+                  <li><strong>SAFE MODE:</strong> At the top of every audit screen is a faint <code>[ SAFE MODE ]</code> button. Tapping this instantly transforms the screen into a fake Google Search interface.</li>
+                  <li><strong>Photo Evidence:</strong> In the Hotel module, tapping the circular camera icon at the top right covertly snaps a photo using the front or rear camera and saves it invisibly to your device until the final PDF is generated.</li>
+                </ul>
+              </div>
+
+              <div className="space-y-8">
+                {/* BAR METRICS */}
+                <section>
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <span className="text-2xl">🥃</span> Bar Premises
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="text-red-400 font-bold mb-3 uppercase tracking-wider text-xs">🔴 Negative Infractions</h4>
+                      <ul className="space-y-3">
+                        <li><strong>Free Pours:</strong> Serving drinks without a jigger/optic.</li>
+                        <li><strong>Incorrect Measure:</strong> Using wrong measure size (e.g., 50ml instead of 25ml).</li>
+                        <li><strong>No Ring In:</strong> Taking cash but never entering the sale into the till.</li>
+                        <li><strong>Charge Discrepancy:</strong> Undercharging friends or overcharging tourists.</li>
+                        <li><strong>Till Left Open:</strong> Walking away while the cash drawer is wide open.</li>
+                        <li><strong>Unrecorded Wastage:</strong> Dropping a drink without logging it in the wastage book.</li>
+                        <li><strong>Giving Away Drinks:</strong> Unauthorized free drinks or heavy "comps".</li>
+                        <li><strong>Dirty Glassware:</strong> Serving in a glass with lipstick or chips.</li>
+                        <li><strong>Using Phone:</strong> Staff texting/browsing while customers wait.</li>
+                        <li><strong>Eating/Drinking:</strong> Consuming food/drink behind the bar.</li>
+                        <li><strong>Underage Staff Serving:</strong> Under 18 serving alcohol without supervision.</li>
+                        <li><strong>No ID Check:</strong> Failing to Challenge 25 young patrons.</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="text-emerald-400 font-bold mb-3 uppercase tracking-wider text-xs">🟢 Positive Observations</h4>
+                      <ul className="space-y-3">
+                        <li><strong>Immediate Ring-In:</strong> Entering transactions the exact moment cash is taken.</li>
+                        <li><strong>Consistent Till Closure:</strong> Keeping the drawer shut between transactions.</li>
+                        <li><strong>Accurate Change:</strong> Visually counting back change to customers.</li>
+                        <li><strong>Immediate Greeting:</strong> Acknowledging a guest within 30 seconds.</li>
+                        <li><strong>Upselling / Upgrades:</strong> Suggesting premium brands or larger pours.</li>
+                        <li><strong>Efficiency Under Pressure:</strong> Clean, methodical workflow during rush hour.</li>
+                        <li><strong>Exact Measure Pouring:</strong> Perfect use of jiggers/optics.</li>
+                        <li><strong>Active Spill Logging:</strong> Immediately recording dropped drinks.</li>
+                        <li><strong>Perfect Glassware:</strong> Flawlessly clean, polished glasses used.</li>
+                        <li><strong>Proactive Age Verification:</strong> Smoothly initiating Challenge 25 protocols.</li>
+                        <li><strong>Responsible Service:</strong> Politely cutting off over-served guests.</li>
+                        <li><strong>Cleanliness Maintenance:</strong> Wiping down the bar top instantly after service.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </section>
+
+                {/* RESTAURANT METRICS */}
+                <section>
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <span className="text-2xl">🍽️</span> Restaurant & Floor
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="text-red-400 font-bold mb-3 uppercase tracking-wider text-xs">🔴 Negative Infractions</h4>
+                      <ul className="space-y-3">
+                        <li><strong>Off-Pocket Cash:</strong> Settling a bill with cash that goes into an apron, not the till.</li>
+                        <li><strong>Unrecorded Item Upgrade:</strong> e.g., Adding truffle fries without charging the supplement.</li>
+                        <li><strong>Table Squatting Delay:</strong> Ignoring a table that clearly wants to pay and leave.</li>
+                        <li><strong>Unauthorized Comps:</strong> Giving away desserts or drinks without manager approval.</li>
+                        <li><strong>Till Left Open:</strong> Leaving the POS cash drawer unlocked.</li>
+                        <li><strong>Menu Price Discrepancy:</strong> Charging a different price than listed on the menu.</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="text-emerald-400 font-bold mb-3 uppercase tracking-wider text-xs">🟢 Positive Observations</h4>
+                      <ul className="space-y-3">
+                        <li><strong>Allergen Verification:</strong> Explicitly asking guests about allergies before taking the order.</li>
+                        <li><strong>High-Margin Upselling:</strong> Suggesting sides, bottled water, or premium pairings.</li>
+                        <li><strong>Bill Accuracy:</strong> Delivering the bill with 100% correct items.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </section>
+
+                {/* HOTEL METRICS */}
+                <section>
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <span className="text-2xl">🏨</span> Hotel & Guest Services
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="text-red-400 font-bold mb-3 uppercase tracking-wider text-xs">🔴 Negative Infractions</h4>
+                      <ul className="space-y-3">
+                        <li><strong>Cash Upgrade Leak:</strong> Taking cash for a room upgrade and pocketing it.</li>
+                        <li><strong>ID/Immigration Fail:</strong> Failing to scan or record required passports for foreign guests.</li>
+                        <li><strong>Guest Data Exposure:</strong> Leaving guest registration cards or screens visible to the public.</li>
+                        <li><strong>Deep-Clean Oversight:</strong> Missing obvious cleanliness issues in common areas or rooms.</li>
+                        <li><strong>Amenities Malfunction:</strong> Broken keycards, missing towels, or empty soap dispensers not actioned.</li>
+                        <li><strong>Unattended Desk:</strong> Leaving the front desk entirely empty without a "back in 5 mins" sign.</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="text-emerald-400 font-bold mb-3 uppercase tracking-wider text-xs">🟢 Positive Observations</h4>
+                      <ul className="space-y-3">
+                        <li><strong>Loyalty Program Push:</strong> Actively encouraging sign-ups for the hotel rewards program.</li>
+                        <li><strong>Preemptive Concierge:</strong> Offering maps, dining tips, or umbrella assistance before being asked.</li>
+                        <li><strong>Express Departure:</strong> Executing a flawless, rapid check-out process.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </section>
+
+              </div>
             </div>
           </div>
         </div>
