@@ -451,19 +451,21 @@ Generated via Whole Hospitality Covert Audit Utility`);
       
       {/* Stealthy Panic Button Header */}
       <div className="sticky top-0 z-50 mb-6 -mx-4 -mt-4 bg-slate-950/90 backdrop-blur border-b border-slate-900">
-        <div className="flex items-center justify-between px-4 py-3">
-          <Link href="/" className="text-slate-600 hover:text-slate-400 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-          </Link>
+        <div className="flex items-center justify-between">
+          <div className="pl-4 py-3">
+            <Link href="/" className="text-slate-600 hover:text-slate-400 transition-colors block p-2 -ml-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+              </svg>
+            </Link>
+          </div>
           <button 
             onClick={() => setIsPanicked(true)}
-            className="text-slate-600 font-mono text-[10px] tracking-widest opacity-80"
+            className="flex-1 py-5 text-slate-600 font-mono text-[10px] tracking-widest opacity-80 hover:bg-slate-900 transition-colors"
           >
             [ SAFE MODE ]
           </button>
-          <div className="w-5"></div> {/* Spacer to keep Safe Mode perfectly centered */}
+          <div className="w-12"></div> {/* Spacer to keep Safe Mode perfectly centered */}
         </div>
       </div>
 
@@ -495,41 +497,56 @@ Generated via Whole Hospitality Covert Audit Utility`);
       </header>
 
       <div className="space-y-6">
-        
-        {/* Staff Tracker */}
-        <section className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
-          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between">
-            <span>Staff Tracker</span>
-            <span className="text-emerald-500 text-xs bg-emerald-500/10 px-2 py-0.5 rounded">Active: {activeStaff}</span>
-          </h2>
-          
-          <div className="flex flex-wrap gap-2 mb-4">
-            {staffList.map(staff => (
-              <button 
-                key={staff}
-                onClick={() => setActiveStaff(staff)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${activeStaff === staff ? 'bg-emerald-600 border-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500'}`}
-              >
-                {staff}
-              </button>
-            ))}
+        {/* Stealthy Staff Tracker (Looks like texting) */}
+        <section className="bg-[#1c1c1e] border border-slate-800 rounded-2xl overflow-hidden shadow-lg mt-4">
+          {/* Fake Chat Header */}
+          <div className="bg-[#2c2c2e]/90 backdrop-blur px-4 py-3 border-b border-slate-700 flex items-center gap-3">
+            <div className="w-10 h-10 bg-slate-500 rounded-full flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+              <svg className="w-8 h-8 text-slate-300 mt-2" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"></path></svg>
+            </div>
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <span className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-0.5">Tracking Target</span>
+              <span className="text-sm font-bold text-white leading-tight truncate">{activeStaff}</span>
+            </div>
           </div>
+          
+          <div className="p-4 space-y-4">
+            {/* Active Staff List (Fake Message bubbles) */}
+            <div className="flex flex-wrap gap-2">
+              {staffList.map(s => (
+                <button
+                  key={s}
+                  onClick={() => setActiveStaff(s)}
+                  className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors border ${
+                    activeStaff === s 
+                      ? "bg-[#0a84ff] text-white border-[#0a84ff]" 
+                      : "bg-[#2c2c2e] text-slate-300 border-slate-700 hover:bg-[#3a3a3c]"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
 
-          <div className="flex gap-2">
-            <input 
-              type="text" 
-              value={newStaffInput}
-              onChange={e => setNewStaffInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAddStaff()}
-              className="flex-1 bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm"
-              placeholder="Add staff (e.g. John, or Tall Male)"
-            />
-            <button 
-              onClick={handleAddStaff}
-              className="bg-slate-700 hover:bg-slate-600 px-4 rounded text-sm font-bold transition-colors"
-            >
-              Add
-            </button>
+            {/* iMessage Style Input */}
+            <div className="flex gap-2 items-end pt-2">
+              <div className="flex-1 bg-[#2c2c2e] rounded-full border border-slate-700 px-4 py-2 flex items-center shadow-inner">
+                <input 
+                  type="text" 
+                  placeholder="iMessage" 
+                  className="w-full bg-transparent text-[15px] text-slate-200 placeholder-slate-500 focus:outline-none"
+                  value={newStaffInput}
+                  onChange={(e) => setNewStaffInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddStaff()}
+                />
+              </div>
+              <button 
+                onClick={handleAddStaff}
+                className="bg-[#0a84ff] hover:bg-blue-400 text-white p-2 rounded-full shadow-md transition-colors flex items-center justify-center shrink-0 h-[40px] w-[40px]"
+              >
+                <svg className="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
+              </button>
+            </div>
           </div>
         </section>
 
