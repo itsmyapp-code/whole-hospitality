@@ -48,25 +48,29 @@ export default function RestaurantAuditPage() {
   const [captures, setCaptures] = useState<{dataUrl: string, timestamp: number}[]>([]);
   const cameraRef = useRef<BarStealthCameraRef>(null);
 
+  // Clear previous captures
+  useEffect(() => {
+    try {
+      localStorage.removeItem('audit_captures');
+    } catch (e) {}
+  }, []);
+
   const triggerPhotoCapture = () => {
     if (cameraRef.current) {
-      cameraRef.current.capturePhoto().then(dataUrl => {
-        if (dataUrl) {
-          setCaptures(prev => [...prev, { dataUrl, timestamp: Date.now() }]);
-          // Flash effect
-          const flash = document.createElement('div');
-          flash.className = 'fixed inset-0 bg-white z-[999999] opacity-0 transition-opacity duration-75';
-          document.body.appendChild(flash);
-          requestAnimationFrame(() => {
-            flash.classList.remove('opacity-0');
-            flash.classList.add('opacity-100');
-            setTimeout(() => {
-              flash.classList.remove('opacity-100');
-              flash.classList.add('opacity-0');
-              setTimeout(() => document.body.removeChild(flash), 100);
-            }, 50);
-          });
-        }
+      cameraRef.current.capturePhoto();
+      setCaptures(prev => [...prev, { dataUrl: '', timestamp: Date.now() }]); // Use length for UI counter
+      
+      const flash = document.createElement('div');
+      flash.className = 'fixed inset-0 bg-white z-[999999] opacity-0 transition-opacity duration-75';
+      document.body.appendChild(flash);
+      requestAnimationFrame(() => {
+        flash.classList.remove('opacity-0');
+        flash.classList.add('opacity-100');
+        setTimeout(() => {
+          flash.classList.remove('opacity-100');
+          flash.classList.add('opacity-0');
+          setTimeout(() => document.body.removeChild(flash), 100);
+        }, 50);
       });
     }
   };
@@ -88,12 +92,17 @@ export default function RestaurantAuditPage() {
   };
 
   const exportPDF = async () => {
+    let localCaptures = [];
+    try {
+      localCaptures = JSON.parse(localStorage.getItem('audit_captures') || '[]');
+    } catch (e) {}
+
     await generateUniversalPDF({
       moduleType: "RESTAURANT",
       siteName,
       auditorName,
       staffList,
-      captures: captures,
+      captures: localCaptures,
       metrics: {
         negative: [
           { label: 'Off-Pocket Cash', count: metrics.offPocketCash.length, events: metrics.offPocketCash },
