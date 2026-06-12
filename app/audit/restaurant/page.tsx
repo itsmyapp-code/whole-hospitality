@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { generateUniversalPDF } from "../utils/pdfGenerator";
+import BarStealthCamera, { BarStealthCameraRef } from "../bar/BarStealthCamera";
 
 interface InfractionEvent {
   timestamp: number;
@@ -44,6 +45,32 @@ export default function RestaurantAuditPage() {
   const [menuTimerStart, setMenuTimerStart] = useState<number | null>(null);
   const [mainsTimerStart, setMainsTimerStart] = useState<number | null>(null);
 
+  const [captures, setCaptures] = useState<{dataUrl: string, timestamp: number}[]>([]);
+  const cameraRef = useRef<BarStealthCameraRef>(null);
+
+  const triggerPhotoCapture = () => {
+    if (cameraRef.current) {
+      cameraRef.current.capturePhoto().then(dataUrl => {
+        if (dataUrl) {
+          setCaptures(prev => [...prev, { dataUrl, timestamp: Date.now() }]);
+          // Flash effect
+          const flash = document.createElement('div');
+          flash.className = 'fixed inset-0 bg-white z-[999999] opacity-0 transition-opacity duration-75';
+          document.body.appendChild(flash);
+          requestAnimationFrame(() => {
+            flash.classList.remove('opacity-0');
+            flash.classList.add('opacity-100');
+            setTimeout(() => {
+              flash.classList.remove('opacity-100');
+              flash.classList.add('opacity-0');
+              setTimeout(() => document.body.removeChild(flash), 100);
+            }, 50);
+          });
+        }
+      });
+    }
+  };
+
   const addEvent = (key: keyof typeof metrics, label: string) => {
     if (key === 'timeToMenu' || key === 'timeToMains') return;
     setMetrics(prev => ({
@@ -66,7 +93,7 @@ export default function RestaurantAuditPage() {
       siteName,
       auditorName,
       staffList,
-      captures: [],
+      captures: captures,
       metrics: {
         negative: [
           { label: 'Off-Pocket Cash', count: metrics.offPocketCash.length, events: metrics.offPocketCash },
@@ -233,7 +260,13 @@ export default function RestaurantAuditPage() {
           >
             [ SAFE MODE ]
           </button>
-          <div className="w-12"></div>
+          <div className="pr-4 flex items-center">
+            <div className="w-10 h-10 rounded-full border-2 border-slate-700 bg-slate-800 flex items-center justify-center overflow-hidden shadow-[0_0_15px_rgba(0,0,0,0.5)] cursor-pointer" onClick={triggerPhotoCapture}>
+              <div className="w-8 h-8 rounded-full overflow-hidden opacity-50">
+                <BarStealthCamera ref={cameraRef} />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -298,6 +331,13 @@ export default function RestaurantAuditPage() {
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
               New Message (Add Target)
+            </button>
+            <button 
+              onClick={triggerPhotoCapture}
+              className="w-full bg-[#2c2c2e] hover:bg-[#3a3a3c] text-slate-300 py-3 mt-2 rounded-xl border border-slate-700 font-semibold flex items-center justify-center gap-2 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              Take Photo Evidence {captures.length > 0 && `(${captures.length})`}
             </button>
           </div>
         </section>

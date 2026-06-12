@@ -29,12 +29,26 @@ const getBase64ImageFromUrl = async (imageUrl: string) => {
   }
 };
 
+const getImageDimensions = (base64: string): Promise<{w: number, h: number}> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.width, h: img.height });
+    img.onerror = () => resolve({ w: 40, h: 20 });
+    img.src = base64;
+  });
+};
+
 export const generateUniversalPDF = async (data: PdfExportData) => {
   const doc = new jsPDF();
   
   // Try loading logos
   const logoBase64 = await getBase64ImageFromUrl('/logo.png');
-  const appLogoBase64 = await getBase64ImageFromUrl('/itsmyapp_logo.png');
+
+  let ratio = 2; // default fallback ratio
+  if (logoBase64) {
+    const dims = await getImageDimensions(logoBase64);
+    if (dims.h > 0) ratio = dims.w / dims.h;
+  }
 
   let title = "Covert Premises Audit Report";
   if (data.moduleType === "BAR") title = "Covert Bar Premises Audit Report";
@@ -43,7 +57,9 @@ export const generateUniversalPDF = async (data: PdfExportData) => {
 
   // 1. Header
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', 14, 10, 40, 20); // Adjust size as needed
+    const logoH = 15;
+    const logoW = logoH * ratio;
+    doc.addImage(logoBase64, 'PNG', 14, 10, logoW, logoH);
   }
 
   doc.setFontSize(18);
@@ -181,7 +197,83 @@ export const generateUniversalPDF = async (data: PdfExportData) => {
     });
   }
 
-  // 6. Add Compliance Framework Appendix
+  // 6. Add Metric Glossary Appendix
+  doc.addPage();
+  doc.setFontSize(16);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`Appendix: ${data.moduleType} Metric Glossary`, 14, 20);
+
+  let glossaryData: any[] = [];
+  
+  if (data.moduleType === "BAR") {
+    glossaryData = [
+      [{ content: "🔴 Negative Infractions", styles: { fontStyle: 'bold', textColor: [220, 38, 38], fontSize: 12 } }],
+      ["Free Pours: Serving drinks without a jigger/optic."],
+      ["Incorrect Measure: Using wrong measure size (e.g., 50ml instead of 25ml)."],
+      ["No Ring In: Taking cash but never entering the sale into the till."],
+      ["Charge Discrepancy: Undercharging friends or overcharging tourists."],
+      ["Till Left Open: Walking away while the cash drawer is wide open."],
+      ["Unrecorded Wastage: Dropping a drink without logging it in the wastage book."],
+      ["Giving Away Drinks: Unauthorized free drinks or heavy 'comps'."],
+      ["Dirty Glassware: Serving in a glass with lipstick or chips."],
+      ["Using Phone: Staff texting/browsing while customers wait."],
+      ["Eating/Drinking: Consuming food/drink behind the bar."],
+      ["Underage Staff Serving: Under 18 serving alcohol without supervision."],
+      ["No ID Check: Failing to Challenge 25 young patrons."],
+      [{ content: "🟢 Positive Observations", styles: { fontStyle: 'bold', textColor: [16, 185, 129], fontSize: 12, cellPadding: { top: 10 } } }],
+      ["Immediate Ring-In: Entering transactions the exact moment cash is taken."],
+      ["Consistent Till Closure: Keeping the drawer shut between transactions."],
+      ["Accurate Change: Visually counting back change to customers."],
+      ["Immediate Greeting: Acknowledging a guest within 30 seconds."],
+      ["Upselling / Upgrades: Suggesting premium brands or larger pours."],
+      ["Efficiency Under Pressure: Clean, methodical workflow during rush hour."],
+      ["Exact Measure Pouring: Perfect use of jiggers/optics."],
+      ["Active Spill Logging: Immediately recording dropped drinks."],
+      ["Perfect Glassware: Flawlessly clean, polished glasses used."],
+      ["Proactive Age Verification: Smoothly initiating Challenge 25 protocols."],
+      ["Responsible Service: Politely cutting off over-served guests."],
+      ["Cleanliness Maintenance: Wiping down the bar top instantly after service."]
+    ];
+  } else if (data.moduleType === "RESTAURANT") {
+    glossaryData = [
+      [{ content: "🔴 Negative Infractions", styles: { fontStyle: 'bold', textColor: [220, 38, 38], fontSize: 12 } }],
+      ["Off-Pocket Cash: Settling a bill with cash that goes into an apron, not the till."],
+      ["Unrecorded Item Upgrade: e.g., Adding truffle fries without charging the supplement."],
+      ["Table Squatting Delay: Ignoring a table that clearly wants to pay and leave."],
+      ["Unauthorized Comps: Giving away desserts or drinks without manager approval."],
+      ["Till Left Open: Leaving the POS cash drawer unlocked."],
+      ["Menu Price Discrepancy: Charging a different price than listed on the menu."],
+      [{ content: "🟢 Positive Observations", styles: { fontStyle: 'bold', textColor: [16, 185, 129], fontSize: 12, cellPadding: { top: 10 } } }],
+      ["Allergen Verification: Explicitly asking guests about allergies before taking the order."],
+      ["High-Margin Upselling: Suggesting sides, bottled water, or premium pairings."],
+      ["Bill Accuracy: Delivering the bill with 100% correct items."]
+    ];
+  } else if (data.moduleType === "HOTEL") {
+    glossaryData = [
+      [{ content: "🔴 Negative Infractions", styles: { fontStyle: 'bold', textColor: [220, 38, 38], fontSize: 12 } }],
+      ["Cash Upgrade Leak: Taking cash for a room upgrade and pocketing it."],
+      ["ID/Immigration Fail: Failing to scan or record required passports for foreign guests."],
+      ["Guest Data Exposure: Leaving guest registration cards or screens visible to the public."],
+      ["Deep-Clean Oversight: Missing obvious cleanliness issues in common areas or rooms."],
+      ["Amenities Malfunction: Broken keycards, missing towels, or empty soap dispensers not actioned."],
+      ["Unattended Desk: Leaving the front desk entirely empty without a 'back in 5 mins' sign."],
+      [{ content: "🟢 Positive Observations", styles: { fontStyle: 'bold', textColor: [16, 185, 129], fontSize: 12, cellPadding: { top: 10 } } }],
+      ["Loyalty Program Push: Actively encouraging sign-ups for the hotel rewards program."],
+      ["Preemptive Concierge: Offering maps, dining tips, or umbrella assistance before being asked."],
+      ["Express Departure: Executing a flawless, rapid check-out process."]
+    ];
+  }
+
+  autoTable(doc, {
+    startY: 30,
+    body: glossaryData,
+    theme: 'plain',
+    styles: { fontSize: 10, cellPadding: 3, textColor: [50, 50, 50] },
+    columnStyles: { 0: { cellWidth: 'auto' } },
+    margin: { bottom: 30 }
+  });
+
+  // 7. Add Compliance Framework Appendix
   doc.addPage();
   doc.setFontSize(16);
   doc.setTextColor(0, 0, 0);
@@ -213,7 +305,7 @@ export const generateUniversalPDF = async (data: PdfExportData) => {
     margin: { bottom: 30 }
   });
 
-  // 7. Draw Legal Footer on Every Page
+  // 8. Draw Legal Footer on Every Page
   const pageCount = (doc as any).internal.getNumberOfPages();
   const pageWidth = (doc as any).internal.pageSize.getWidth();
   const pageHeight = (doc as any).internal.pageSize.getHeight();
@@ -241,9 +333,11 @@ export const generateUniversalPDF = async (data: PdfExportData) => {
     const textWidth = doc.getTextWidth(centerText);
     doc.text(centerText, (pageWidth - textWidth) / 2, pageHeight - 19);
 
-    if (appLogoBase64) {
-      // Small watermark / logo for the developer at bottom center
-      doc.addImage(appLogoBase64, 'PNG', (pageWidth - 20) / 2, pageHeight - 15, 20, 10);
+    if (logoBase64) {
+      // Scale watermark at bottom center
+      const wmH = 8;
+      const wmW = wmH * ratio;
+      doc.addImage(logoBase64, 'PNG', (pageWidth - wmW) / 2, pageHeight - 15, wmW, wmH);
     }
     
     // Column Right
