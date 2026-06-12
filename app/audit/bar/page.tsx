@@ -2,6 +2,8 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import BarStealthCamera, { BarStealthCameraRef } from "./BarStealthCamera";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 // Mock data for the "Live Feed"
 const MOCK_ARTICLE = [
@@ -18,14 +20,18 @@ export default function CovertAuditPage() {
   const [isPanicked, setIsPanicked] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   
-  // Audit Metrics State
+  // Auditor Info State
+  const [siteName, setSiteName] = useState("");
+  const [auditorName, setAuditorName] = useState("");
+
+  // Audit Metrics State (Now logs exact timestamps)
   const [metrics, setMetrics] = useState({
-    freePours: 0,
-    incorrectMeasures: 0,
-    noRingIns: 0,
-    chargeDiscrepancies: 0,
-    timeToGreetSecs: [] as number[],
-    timeToServeSecs: [] as number[],
+    freePours: [] as string[],
+    incorrectMeasures: [] as string[],
+    noRingIns: [] as string[],
+    chargeDiscrepancies: [] as string[],
+    timeToGreetSecs: [] as { timestamp: string, duration: number }[],
+    timeToServeSecs: [] as { timestamp: string, duration: number }[],
     photosTaken: 0,
   });
 
@@ -57,7 +63,7 @@ export default function CovertAuditPage() {
     if (navTapTimeout.current) clearTimeout(navTapTimeout.current);
     
     navTapTimeout.current = setTimeout(() => {
-      if (navTapCount >= 2) { // 3 taps (0, 1, 2)
+      if (navTapCount >= 2) { // 3 taps
         setIsPanicked(true);
       }
       setNavTapCount(0);
@@ -79,27 +85,30 @@ export default function CovertAuditPage() {
 
   // Triggers
   const logFreePour = () => {
-    setMetrics(prev => ({ ...prev, freePours: prev.freePours + 1 }));
+    setMetrics(prev => ({ ...prev, freePours: [...prev.freePours, new Date().toISOString()] }));
   };
 
   const logIncorrectMeasure = (e: React.MouseEvent) => {
-    e.stopPropagation(); // prevent bubbling to other elements
-    setMetrics(prev => ({ ...prev, incorrectMeasures: prev.incorrectMeasures + 1 }));
+    e.stopPropagation();
+    setMetrics(prev => ({ ...prev, incorrectMeasures: [...prev.incorrectMeasures, new Date().toISOString()] }));
   };
 
   const logNoRingIn = () => {
-    setMetrics(prev => ({ ...prev, noRingIns: prev.noRingIns + 1 }));
+    setMetrics(prev => ({ ...prev, noRingIns: [...prev.noRingIns, new Date().toISOString()] }));
   };
 
   const logChargeDiscrepancy = () => {
-    setMetrics(prev => ({ ...prev, chargeDiscrepancies: prev.chargeDiscrepancies + 1 }));
+    setMetrics(prev => ({ ...prev, chargeDiscrepancies: [...prev.chargeDiscrepancies, new Date().toISOString()] }));
   };
 
   const toggleGreetTimer = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (greetTimerStart) {
       const elapsed = Math.round((Date.now() - greetTimerStart) / 1000);
-      setMetrics(prev => ({ ...prev, timeToGreetSecs: [...prev.timeToGreetSecs, elapsed] }));
+      setMetrics(prev => ({ 
+        ...prev, 
+        timeToGreetSecs: [...prev.timeToGreetSecs, { timestamp: new Date().toISOString(), duration: elapsed }] 
+      }));
       setGreetTimerStart(null);
     } else {
       setGreetTimerStart(Date.now());
@@ -109,7 +118,10 @@ export default function CovertAuditPage() {
   const toggleServeTimer = () => {
     if (serveTimerStart) {
       const elapsed = Math.round((Date.now() - serveTimerStart) / 1000);
-      setMetrics(prev => ({ ...prev, timeToServeSecs: [...prev.timeToServeSecs, elapsed] }));
+      setMetrics(prev => ({ 
+        ...prev, 
+        timeToServeSecs: [...prev.timeToServeSecs, { timestamp: new Date().toISOString(), duration: elapsed }] 
+      }));
       setServeTimerStart(null);
     } else {
       setServeTimerStart(Date.now());
@@ -136,6 +148,103 @@ export default function CovertAuditPage() {
     }
   };
 
+  // PDF Export Logic
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // 1. Header
+    doc.setFontSize(18);
+    doc.text("Covert Bar Premises Audit Report", 14, 20);
+    
+    doc.setFontSize(11);
+    doc.text(`Site Name: ${siteName || "Not Specified"}`, 14, 30);
+    doc.text(`Auditor: ${auditorName || "Not Specified"}`, 14, 36);
+    doc.text(`Date of Export: ${new Date().toLocaleString()}`, 14, 42);
+
+    // 2. Summary Table
+    doc.setFontSize(14);
+    doc.text("Executive Summary", 14, 55);
+
+    autoTable(doc, {
+      startY: 60,
+      head: [['Infraction Type', 'Total Incidents']],
+      body: [
+        ['Free Pouring', metrics.freePours.length],
+        ['Incorrect Measure Size', metrics.incorrectMeasures.length],
+        ['No Ring-In', metrics.noRingIns.length],
+        ['Over/Under-charge Discrepancy', metrics.chargeDiscrepancies.length],
+      ],
+      theme: 'grid',
+    });
+
+    // 3. Chronological Event Log
+    const events: { type: string; time: Date, detail?: string }[] = [];
+    metrics.freePours.forEach(ts => events.push({ type: 'Free Pour', time: new Date(ts) }));
+    metrics.incorrectMeasures.forEach(ts => events.push({ type: 'Incorrect Measure', time: new Date(ts) }));
+    metrics.noRingIns.forEach(ts => events.push({ type: 'No Ring-In', time: new Date(ts) }));
+    metrics.chargeDiscrepancies.forEach(ts => events.push({ type: 'Charge Discrepancy', time: new Date(ts) }));
+    metrics.timeToGreetSecs.forEach(t => events.push({ type: 'Time to Greet', time: new Date(t.timestamp), detail: `${t.duration} seconds` }));
+    metrics.timeToServeSecs.forEach(t => events.push({ type: 'Time to Serve', time: new Date(t.timestamp), detail: `${t.duration} seconds` }));
+
+    // Sort chronologically
+    events.sort((a, b) => a.time.getTime() - b.time.getTime());
+
+    let finalY = (doc as any).lastAutoTable.finalY + 15;
+    doc.setFontSize(14);
+    doc.text("Chronological Event Log", 14, finalY);
+
+    const logBody = events.map(e => [
+      e.time.toLocaleTimeString([], { hour12: false }),
+      e.type,
+      e.detail || "-"
+    ]);
+
+    if (events.length > 0) {
+      autoTable(doc, {
+        startY: finalY + 5,
+        head: [['Time', 'Event', 'Details']],
+        body: logBody,
+        theme: 'striped',
+      });
+      finalY = (doc as any).lastAutoTable.finalY + 15;
+    } else {
+      doc.setFontSize(10);
+      doc.text("No events logged.", 14, finalY + 8);
+      finalY += 15;
+    }
+
+    // 4. Photographic Evidence
+    try {
+      const captures = JSON.parse(localStorage.getItem('audit_captures') || '[]');
+      if (captures.length > 0) {
+        doc.addPage();
+        doc.setFontSize(14);
+        doc.text("Photographic Evidence", 14, 20);
+        
+        let yPos = 30;
+        captures.forEach((cap: any, index: number) => {
+          if (yPos > 240) {
+            doc.addPage();
+            yPos = 20;
+          }
+          doc.setFontSize(10);
+          doc.text(`Evidence #${index + 1} - Captured: ${cap.timestamp}`, 14, yPos);
+          
+          // Image proportions (16:9 approx or scaled to fit width)
+          doc.addImage(cap.dataUrl, 'JPEG', 14, yPos + 5, 120, 90);
+          yPos += 105;
+        });
+      }
+    } catch (e) {
+      console.warn("Could not attach photos to PDF", e);
+    }
+
+    // Download
+    const filename = `Audit_${siteName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(filename);
+  };
+
   if (isPanicked) {
     return (
       <div className="min-h-screen bg-white text-black p-4 font-sans">
@@ -155,7 +264,7 @@ export default function CovertAuditPage() {
         </main>
         <button 
           onClick={() => setIsPanicked(false)} 
-          className="mt-12 text-xs text-white opacity-10" // highly hidden un-panic button
+          className="mt-12 text-xs text-white opacity-10"
         >
           reset
         </button>
@@ -176,14 +285,12 @@ export default function CovertAuditPage() {
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Mock Refresh Icon -> Toggles Greet Timer */}
           <button onClick={toggleGreetTimer} className="p-2 opacity-50 active:opacity-100 transition-opacity">
             <svg className={`w-4 h-4 ${greetTimerStart ? 'text-blue-500' : 'text-neutral-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>
           
-          {/* Stealth Camera wrapped to look like a profile/avatar */}
           <div onClick={triggerCamera} className="active:scale-95 transition-transform">
             <BarStealthCamera ref={cameraRef} />
           </div>
@@ -191,13 +298,11 @@ export default function CovertAuditPage() {
       </nav>
 
       <main className="p-4 space-y-6">
-        {/* Author/Date Header -> Toggles Serve Timer */}
         <div onClick={toggleServeTimer} className="flex items-center gap-2 cursor-default opacity-60 active:opacity-100">
           <div className={`w-2 h-2 rounded-full ${serveTimerStart ? 'bg-red-900' : 'bg-neutral-800'}`}></div>
           <span className="text-xs uppercase tracking-wider">By J. Doe • {new Date().toLocaleDateString()}</span>
         </div>
 
-        {/* First Section -> Free Pouring */}
         <div 
           onClick={logFreePour} 
           className="text-lg leading-relaxed text-neutral-300 cursor-default active:bg-neutral-900 rounded p-1 transition-colors -mx-1"
@@ -205,16 +310,15 @@ export default function CovertAuditPage() {
           <p>Early reports indicate a shift in the local economic landscape as new businesses register in the city center.</p>
         </div>
 
-        {/* Article Rows */}
         <div className="space-y-4 pt-4 border-t border-neutral-900">
           {MOCK_ARTICLE.map((item, index) => (
             <div 
               key={item.id}
               className="flex items-start gap-3 p-2 -mx-2 rounded cursor-default active:bg-neutral-900 transition-colors"
-              onDoubleClick={logChargeDiscrepancy} // Double tap -> Charge Discrepancy
-              onTouchStart={handleTouchStart} // Long press -> No Ring-In
+              onDoubleClick={logChargeDiscrepancy}
+              onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
-              onMouseDown={handleTouchStart} // For desktop testing
+              onMouseDown={handleTouchStart}
               onMouseUp={handleTouchEnd}
               onMouseLeave={handleTouchEnd}
             >
@@ -224,7 +328,6 @@ export default function CovertAuditPage() {
               <div className="flex-1">
                 <p className="text-sm leading-relaxed">{item.text}</p>
                 
-                {/* Share/Like Icon -> Incorrect Measure Size */}
                 <div className="mt-2 flex items-center gap-4">
                   <button onClick={logIncorrectMeasure} className="flex items-center gap-1 text-xs text-neutral-600 active:text-neutral-400 p-1 -ml-1">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -242,62 +345,72 @@ export default function CovertAuditPage() {
       {/* Hidden footer area for Debug Panel */}
       <div 
         onClick={handleDebugTap}
-        className="fixed bottom-0 left-0 w-full h-12 bg-transparent"
+        className="fixed bottom-0 left-0 w-full h-16 bg-transparent"
       />
 
-      {/* Debug Panel */}
+      {/* Admin Panel */}
       {showDebug && (
-        <div className="fixed inset-0 bg-black/90 z-50 p-6 overflow-y-auto text-green-500 font-mono text-sm">
+        <div className="fixed inset-0 bg-black/95 z-50 p-6 overflow-y-auto text-green-500 font-mono text-sm">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold">Audit Session Data</h2>
+            <h2 className="text-xl font-bold">Audit Settings & Export</h2>
             <button onClick={() => setShowDebug(false)} className="px-3 py-1 bg-green-900 text-green-400 rounded">Close</button>
           </div>
-          
-          <div className="space-y-4">
-            <div className="border border-green-900 p-4 rounded">
-              <h3 className="uppercase text-green-700 mb-2">Metrics</h3>
-              <ul className="space-y-2">
-                <li>Free Pours (First Sec Tap): {metrics.freePours}</li>
-                <li>Incorrect Measures (Share Tap): {metrics.incorrectMeasures}</li>
-                <li>No Ring-Ins (Long Press): {metrics.noRingIns}</li>
-                <li>Charge Discrepancies (Double Tap): {metrics.chargeDiscrepancies}</li>
-                <li>Photos Taken (Avatar Tap): {metrics.photosTaken}</li>
-              </ul>
-            </div>
 
-            <div className="border border-green-900 p-4 rounded">
-              <h3 className="uppercase text-green-700 mb-2">Timers</h3>
-              <div>
-                <p>Greet Times (s): {metrics.timeToGreetSecs.length > 0 ? metrics.timeToGreetSecs.join(", ") : "None"}</p>
-                <p>Serve Times (s): {metrics.timeToServeSecs.length > 0 ? metrics.timeToServeSecs.join(", ") : "None"}</p>
+          <div className="space-y-6">
+            {/* Setup Form */}
+            <div className="border border-green-900 p-4 rounded space-y-4 bg-green-950/20">
+              <h3 className="uppercase text-green-700 font-bold">1. Session Details</h3>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-green-600 uppercase">Site Name</label>
+                <input 
+                  type="text" 
+                  value={siteName}
+                  onChange={(e) => setSiteName(e.target.value)}
+                  placeholder="e.g. The Red Lion" 
+                  className="bg-black border border-green-900 p-2 rounded text-green-400 outline-none focus:border-green-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-green-600 uppercase">Auditor Name</label>
+                <input 
+                  type="text" 
+                  value={auditorName}
+                  onChange={(e) => setAuditorName(e.target.value)}
+                  placeholder="e.g. John Doe" 
+                  className="bg-black border border-green-900 p-2 rounded text-green-400 outline-none focus:border-green-500"
+                />
               </div>
             </div>
 
-            <div className="border border-green-900 p-4 rounded">
-              <h3 className="uppercase text-green-700 mb-2 flex justify-between">
-                <span>Local Storage Images</span>
+            {/* Export Action */}
+            <div className="border border-green-900 p-4 rounded text-center">
+              <button 
+                onClick={exportPDF}
+                className="w-full py-3 bg-green-700 text-black font-bold uppercase tracking-widest rounded active:bg-green-600 transition-colors"
+              >
+                Generate PDF Report
+              </button>
+              <p className="text-xs text-green-800 mt-2">Downloads an encrypted chronological log to your device</p>
+            </div>
+          
+            {/* Live Stats summary */}
+            <div className="border border-green-900 p-4 rounded opacity-75">
+              <h3 className="uppercase text-green-700 mb-2">Current Totals</h3>
+              <ul className="space-y-2 grid grid-cols-2 text-xs">
+                <li>Free Pours: {metrics.freePours.length}</li>
+                <li>Incorrect Meas: {metrics.incorrectMeasures.length}</li>
+                <li>No Ring-Ins: {metrics.noRingIns.length}</li>
+                <li>Charge Discrepancies: {metrics.chargeDiscrepancies.length}</li>
+                <li>Photos Taken: {metrics.photosTaken}</li>
+              </ul>
+              <div className="mt-4 flex justify-between border-t border-green-900 pt-2">
+                <span>Clear Storage</span>
                 <button 
                   onClick={() => { localStorage.removeItem('audit_captures'); setMetrics(m => ({...m, photosTaken: 0}))}}
-                  className="text-xs bg-red-900/30 text-red-500 px-2 rounded"
+                  className="text-red-500"
                 >
-                  Clear
+                  [ ERASE ]
                 </button>
-              </h3>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                {(() => {
-                  try {
-                    const saved = JSON.parse(localStorage.getItem('audit_captures') || '[]');
-                    if (saved.length === 0) return <p className="text-green-800 text-xs col-span-2">No captures saved.</p>;
-                    return saved.map((item: any, i: number) => (
-                      <div key={i} className="relative">
-                        <img src={item.dataUrl} alt={`Capture ${i}`} className="w-full rounded border border-green-900" />
-                        <span className="absolute bottom-1 left-1 text-[8px] bg-black/50 px-1">{item.timestamp}</span>
-                      </div>
-                    ));
-                  } catch (e) {
-                    return <p className="text-red-500 text-xs">Error reading captures.</p>;
-                  }
-                })()}
               </div>
             </div>
           </div>
