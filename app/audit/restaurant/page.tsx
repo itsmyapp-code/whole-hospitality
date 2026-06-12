@@ -156,11 +156,17 @@ export default function RestaurantAuditPage() {
         </div>
 
         {/* Message History Area */}
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+        <div 
+          className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 cursor-pointer"
+          onClick={() => setIsAddingStaff(false)}
+        >
           <div className="text-center text-xs text-gray-500 my-4">Today {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
           {staffList.filter(s => s !== 'General / Unknown').map((s, i) => (
              <div key={s} className="flex justify-end">
-               <div className="bg-[#0a84ff] text-white rounded-2xl rounded-tr-sm px-4 py-2 max-w-[75%] text-[15px]">
+               <div 
+                 className="bg-[#0a84ff] text-white rounded-2xl rounded-tr-sm px-4 py-2 max-w-[75%] text-[15px] cursor-default"
+                 onClick={(e) => e.stopPropagation()}
+               >
                  {s}
                </div>
              </div>
