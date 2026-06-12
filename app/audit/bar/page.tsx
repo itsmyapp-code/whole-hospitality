@@ -281,7 +281,39 @@ export default function CovertAuditPage() {
       console.warn("Could not attach photos to PDF", e);
     }
 
-    // 6. Draw Legal Footer on Every Page
+    // 6. Add Compliance Framework Appendix
+    doc.addPage();
+    doc.setFontSize(16);
+    doc.setTextColor(0, 0, 0);
+    doc.text("Appendix: Legal Standing & Deployment Guide", 14, 20);
+
+    const complianceData = [
+      [{ content: "1. Core Compliance Facts: Where Whole Hospitality Stands", styles: { fontStyle: 'bold', fontSize: 12 } }],
+      ["Zero-Server Architecture Immunity: The application operates strictly as a local processing engine using client-side React logic. Because zero personal profiles, timestamp logs, or captured images are ever transmitted to or stored on an external network, Whole Hospitality does not possess, harvest, or process user session data."],
+      ["Neutral Utility Designation: Whole Hospitality is legally classified as a neutral software utility provider. The software stands in the exact same regulatory category as an offline spreadsheet or a local text editor."],
+      ["Regulatory Exemption: Because Whole Hospitality never handles or determines the destination of the audit data, Whole Hospitality is not a Data Controller nor a Data Processor under the UK GDPR and Data Protection Act 2018. The platform is entirely insulated from data processing liabilities, data breach regimes, and Subject Access Requests (SARs)."],
+      ["Immediate Client-Side Data Erasure: To enforce strict operational confidentiality, tapping \"Start New Audit\" completely purges all local session variables, nested state configurations, and temporary browser local storage. No recovery infrastructure exists on the network to retrieve purged logs."],
+      [{ content: "2. Mandatory Instructions for Venue Operators (The Data Controllers)", styles: { fontStyle: 'bold', fontSize: 12, cellPadding: { top: 10 } } }],
+      ["Under UK law, the venue operator utilizing this app assumes 100% of the legal status of the Data Controller. To ensure that any exported PDF report stands up as admissible evidence in an employment disciplinary hearing or tribunal, operators must adhere strictly to the following parameters:"],
+      ["The Proportionality Window (1–2 Weeks Max): Covert monitoring must be strictly time-limited. To comply with Information Commissioner's Office (ICO) guidelines, a targeted audit should run no longer than 1 to 2 weeks, or be confined to a handful of high-risk shifts to catch a specific pattern of financial leakage. Indefinite or continuous routine tracking is unlawful."],
+      ["Establish Legitimate Interest: The audit must only be deployed where senior management has a reasonable, documented suspicion of financial leakage, internal theft, fraud, or gross operational malpractice. Using the tool for casual or continuous employee performance trailing is prohibited."],
+      ["Public Floor Boundary Safety: This tool is designed exclusively for use on the public trading floor of the venue (the main bar counter, till areas, and floor service areas). In accordance with UK employment case law, employees serving the public have a reduced expectation of privacy in these spaces. It must never be used in private staff zones, changing rooms, or break areas."],
+      ["Immediate Cessation of Tracking: The moment \"the smoking gun\" evidence is gathered and verified to initiate formal disciplinary action, covert monitoring must stop immediately."],
+      ["Mandatory Pre-Audit DPIA: Before launching an audit, operators are legally required to have a completed Data Protection Impact Assessment (DPIA) on file that explicitly details why a time-limited, covert cash-loss investigation is necessary and proportionate for their business."],
+      [{ content: "3. Website Legal Disclaimer Notice", styles: { fontStyle: 'bold', fontSize: 12, cellPadding: { top: 10 } } }],
+      ["Disclaimer for Users: Whole Hospitality provides the Covert Bar Premises Audit Tool as an offline-first analytical utility. Whole Hospitality does not provide legal counsel or employment law representation. The venue operator assumes full responsibility for ensuring their deployment of this software aligns with the UK GDPR, the Data Protection Act 2018, and local employment laws. Exported PDF files are standalone evidentiary objects; custody, protection, and legal admissibility of the generated reports rest solely with the Data Controller."]
+    ];
+
+    autoTable(doc, {
+      startY: 30,
+      body: complianceData,
+      theme: 'plain',
+      styles: { fontSize: 10, cellPadding: 2, textColor: [50, 50, 50] },
+      columnStyles: { 0: { cellWidth: 'auto' } },
+      margin: { bottom: 30 }
+    });
+
+    // 7. Draw Legal Footer on Every Page
     const pageCount = (doc as any).internal.getNumberOfPages();
     const pageWidth = (doc as any).internal.pageSize.getWidth();
     const pageHeight = (doc as any).internal.pageSize.getHeight();
