@@ -350,6 +350,38 @@ export default function CovertAuditPage() {
     // Download
     const filename = `Audit_${siteName.replace(/\s+/g, '_') || 'Report'}_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
+
+    // 8. Open Email Client
+    const subject = encodeURIComponent(`[CONFIDENTIAL] Covert Audit Report: ${siteName || 'Venue'} - ${new Date().toLocaleDateString('en-GB')}`);
+    
+    // Calculate total infractions for the email body
+    const allMetrics = [
+      metrics.freePours, metrics.incorrectMeasures, metrics.noRingIns, 
+      metrics.chargeDiscrepancies, metrics.tillLeftOpen, metrics.unrecordedWastage, 
+      metrics.givingAwayDrinks, metrics.dirtyGlassware, metrics.usingPhone, 
+      metrics.eatingDrinking, metrics.underageStaff, metrics.noIdCheck
+    ];
+    const totalInfractions = allMetrics.reduce((sum, arr) => sum + arr.length, 0);
+
+    const body = encodeURIComponent(`CONFIDENTIAL TARGETED AUDIT REPORT
+    
+Site Name: ${siteName || 'Not Specified'}
+Auditor: ${auditorName || 'Not Specified'}
+Date: ${new Date().toLocaleString('en-GB')}
+Total Infractions Logged: ${totalInfractions}
+
+Please find the detailed PDF Executive Summary, Staff Breakdown, and Photographic Evidence attached to this email.
+
+*** IMPORTANT: Please remember to manually attach the '${filename}' file that was just saved to your device! ***
+
+--
+Generated via Whole Hospitality Covert Audit Utility`);
+
+    // Add a slight delay so the PDF has time to save before the browser redirects to the mailto link
+    setTimeout(() => {
+      window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    }, 500);
+
   };
 
   if (isPanicked) {
