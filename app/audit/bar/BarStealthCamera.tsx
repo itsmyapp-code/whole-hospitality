@@ -22,10 +22,7 @@ const BarStealthCamera = forwardRef<BarStealthCameraRef, BarStealthCameraProps>(
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: "environment",
-            // Attempt to disable torch via advanced constraints. 
-            // Note: Not all browsers support advanced constraints or torch control.
-            advanced: [{ torch: false } as any],
+            facingMode: "environment"
           },
           audio: false,
         });
@@ -108,7 +105,7 @@ const BarStealthCamera = forwardRef<BarStealthCameraRef, BarStealthCameraProps>(
   }
 
   return (
-    <div className="relative w-8 h-8 rounded-full overflow-hidden border border-neutral-800 opacity-40 grayscale hover:grayscale-0 transition-all cursor-pointer">
+    <div className="relative w-full h-full bg-black">
       {/* Video preview masked to look like a small profile picture */}
       <video
         ref={videoRef}

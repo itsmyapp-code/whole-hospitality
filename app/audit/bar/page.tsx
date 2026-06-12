@@ -359,7 +359,7 @@ export default function CovertAuditPage() {
         <section>
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Evidence</h2>
           <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center gap-4">
-            <div className="hidden">
+            <div className="w-full aspect-video rounded-lg overflow-hidden border border-slate-600 relative bg-black shadow-inner">
               <BarStealthCamera ref={cameraRef} />
             </div>
             <button 
