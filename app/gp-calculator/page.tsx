@@ -74,24 +74,37 @@ const downloadTemplate = (group: ProductGroup) => {
 };
 
 const exportHistoryToCSV = (history: CalculationItem[]) => {
-    const headers = ["Product", "Type", "Target GP", "Recommended Price", "Current Price", "Current GP", "Timestamp"];
-    const rows = history.map(item => {
-        const d = item.details;
-        let recPrice = "-";
-        let currPrice = "-";
-        let currentGP = d["Current GP"] || d["Current GP (Btl)"] || d["Current GP (Pint)"] || "-";
-
-        if (item.type === "Draught") { recPrice = d["Recommended Pint"] || "-"; currPrice = d["Current Pint Price (Inc)"] || "-"; }
-        else if (item.type === "Spirits") { recPrice = d["Recommended 25ml"] || "-"; currPrice = d["Current 25ml Price"] || "-"; }
-        else if (item.type === "Wine") { recPrice = d["Recommended Bottle"] || "-"; currPrice = d["Current Bottle Price"] || "-"; }
-        else if (item.type === "Soft Drinks") { recPrice = d["Recommended Price"] || "-"; currPrice = d["Current Sell Price"] || "-"; }
-        else if (item.type === "Post Mix") { recPrice = d["Recommended Pint"] || "-"; currPrice = d["Current Price"] || "-"; }
-        else if (item.type === "Packed") { recPrice = d["Recommended Price"] || "-"; currPrice = d["Current Sell Price"] || "-"; }
-        else if (item.type === "Snacks") { recPrice = d["Recommended Price"] || "-"; currPrice = d["Current Sell Price"] || "-"; }
-
-        return [item.product, item.type, d["Target GP"] || "-", recPrice, currPrice, currentGP, new Date(item.timestamp).toLocaleString()];
+    if (history.length === 0) return;
+    
+    // Define standard keys to ensure they come first and in a logical order
+    const priorityHeaders = ["Product", "Type", "Target GP"];
+    const otherKeys = new Set<string>();
+    
+    history.forEach(item => {
+        Object.keys(item.details).forEach(key => {
+            if (!priorityHeaders.includes(key) && key !== "Timestamp") {
+                otherKeys.add(key);
+            }
+        });
     });
-    downloadCSV("gp_session_history.csv", headers, rows);
+    
+    // Sort other keys alphabetically for predictability
+    const sortedOtherKeys = Array.from(otherKeys).sort();
+    const headers = [...priorityHeaders, ...sortedOtherKeys, "Timestamp"];
+    
+    const rows = history.map(item => {
+        return headers.map(h => {
+            if (h === "Product") return item.product;
+            if (h === "Type") return item.type;
+            if (h === "Timestamp") return new Date(item.timestamp).toLocaleString();
+            
+            const val = item.details[h] || "-";
+            // Clean value for CSV
+            return val.toString().replace(/,/g, "");
+        });
+    });
+
+    downloadCSV("gp_calculator_history.csv", headers, rows);
 };
 
 type UploadResult = {
@@ -196,7 +209,7 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
 
     // Reality Check Inputs
     const [currentPrice, setCurrentPrice] = useState("");
-
+    const [currentPriceHalf, setCurrentPriceHalf] = useState("");
 
     const [incType, setIncType] = useState("Percentage (%)");
     const [incVal, setIncVal] = useState("");
@@ -220,6 +233,7 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
             if (d["Ullage (%)"]) setUllage(d["Ullage (%)"]);
             // New fields
             if (d["Current Pint Price (Inc)"]) setCurrentPrice(d["Current Pint Price (Inc)"].replace(/[£,]/g, ""));
+            if (d["Current 1/2 Pint Price (Inc)"]) setCurrentPriceHalf(d["Current 1/2 Pint Price (Inc)"].replace(/[£,]/g, ""));
         }
     }, [initialData]);
 
@@ -336,9 +350,10 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                 "Extra Duty (Ex-VAT)": `£${dutyTotal.toFixed(2)}`,
                 "New Total Cost (Ex-VAT)": `£${forecastTotal.toFixed(2)}`,
                 "Current Pint Price (Inc)": currSell > 0 ? `£${currSell.toFixed(2)}` : "-",
+                "Current 1/2 Pint Price (Inc)": currentPriceHalf ? `£${parseFloat(currentPriceHalf).toFixed(2)}` : "-",
                 "Current GP": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
                 "Recommended Pint": `£${recommPint.toFixed(2)}`,
-                "Recommended Half": `£${recommHalf.toFixed(2)}`,
+                "Recommended 1/2 Pint": `£${recommHalf.toFixed(2)}`,
             },
         };
         onSave(item);
@@ -387,9 +402,12 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <h3 className="text-sm font-bold text-blue-500 uppercase tracking-wider mb-4">Targets & Reality</h3>
                     <div className="space-y-4">
-                        <div className="grid grid-cols-1 gap-2">
+                        <div className="grid grid-cols-2 gap-4">
                             <InputField label="Target GP %" value={gp} onChange={setGp} type="number" />
-                            <InputField label="Current Pint (Inc-VAT)" value={currentPrice} onChange={setCurrentPrice} type="number" />
+                            <InputField label="Current Pint (Inc)" value={currentPrice} onChange={setCurrentPrice} type="number" />
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                            <InputField label="Current 1/2 Pint (Inc)" value={currentPriceHalf} onChange={setCurrentPriceHalf} type="number" />
                         </div>
                     </div>
                 </div>
@@ -428,7 +446,7 @@ const DraughtCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                             </div>
                             <div className="hidden md:block w-px bg-slate-200"></div>
                             <div className="flex flex-col items-center">
-                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">Half</span>
+                                <span className="text-xs text-slate-400 uppercase tracking-widest font-normal mb-1">1/2 Pint</span>
                                 <span>£{result.half.toFixed(2)}</span>
                             </div>
                             <div className="hidden md:block w-px bg-slate-200"></div>
@@ -689,8 +707,9 @@ const WineCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calculati
         m250: number;
         m175: number;
         m125: number;
+        mHalf: number;
         currentGP: number | null;
-    }>(null);
+    } | null>(null);
 
     const calculate = () => {
         const prodName = name.trim() || "Wine";
@@ -724,6 +743,9 @@ const WineCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calculati
         // 125ml (Small) -> GP + 4%
         const m125 = smartRound((costPerMl * 125 / (1 - (targetGp + 4) / 100)) * 1.20);
 
+        // 1/2 Pint (284ml) -> Standard GP (mostly used for draught wine)
+        const mHalf = smartRound((costPerMl * 284 / (1 - targetGp / 100)) * 1.20);
+
         // --- Reality Check ---
         const currBtl = parseFloat(currentPriceBtl) || 0;
 
@@ -737,7 +759,7 @@ const WineCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calculati
         }
 
         setResult({
-            btlPrice, m250, m175, m125,
+            btlPrice, m250, m175, m125, mHalf,
             currentGP: currentGP,
         });
 
@@ -761,6 +783,7 @@ const WineCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calculati
                 "Recommended 250ml": `£${m250.toFixed(2)}`,
                 "Recommended 175ml": `£${m175.toFixed(2)}`,
                 "Recommended 125ml": `£${m125.toFixed(2)}`,
+                "Recommended 1/2 Pint": `£${mHalf.toFixed(2)}`,
             },
         };
         onSave(item);
@@ -832,6 +855,11 @@ const WineCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calculati
                             <span className="text-xs text-slate-400 font-normal">125ml</span>
                             <span>£{result.m125.toFixed(2)}</span>
                             {currentPrice125 && <span className="text-xs text-slate-400 mt-1">Curr: £{currentPrice125}</span>}
+                        </div>
+                        <span className="text-slate-300">|</span>
+                        <div className="flex flex-col items-center">
+                            <span className="text-xs text-slate-400 font-normal">1/2 Pt</span>
+                            <span>£{result.mHalf.toFixed(2)}</span>
                         </div>
                     </div>
 
@@ -1128,7 +1156,7 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                 "Recommended Pint": `£${pPint.toFixed(2)}`,
                 "Recommended 16oz": `£${p16oz.toFixed(2)}`,
                 "Recommended 12oz": `£${p12oz.toFixed(2)}`,
-                "Recommended Half": `£${pHalf.toFixed(2)}`,
+                "Recommended 1/2 Pint": `£${pHalf.toFixed(2)}`,
                 "Recommended Dash": `£${pDash.toFixed(2)}`,
                 "Current Price": currPrice > 0 ? `£${currPrice.toFixed(2)}` : "-",
                 "Current Price Unit": currentPriceUnit,
@@ -1210,7 +1238,7 @@ const PostMixCalc = ({ onSave, initialData, defaultGP }: { onSave: (data: Calcul
                             <span>£{result.p12oz.toFixed(2)}</span>
                         </div>
                         <div className="flex flex-col items-center p-2 bg-white rounded border border-slate-100">
-                            <span className="text-xs text-slate-400 font-normal">Half</span>
+                            <span className="text-xs text-slate-400 font-normal">1/2 Pint</span>
                             <span>£{result.half.toFixed(2)}</span>
                         </div>
                         <div className="flex flex-col items-center p-2 bg-white rounded border border-slate-100">
@@ -1708,7 +1736,7 @@ const UploadCalc = ({ onSave, defaultGPs, sector, tier, onResultsChange }: {
                                         <>
                                             <th className="py-3 px-3 font-medium text-right">Cost</th>
                                             <th className="py-3 px-3 font-medium text-right">Rec Pint</th>
-                                            <th className="py-3 px-3 font-medium text-right">Rec Half</th>
+                                            <th className="py-3 px-3 font-medium text-right">Rec 1/2 Pt</th>
                                             <th className="py-3 px-3 font-medium text-right">Current</th>
                                             <th className="py-3 px-3 font-medium text-right">GP</th>
                                         </>
@@ -1729,6 +1757,7 @@ const UploadCalc = ({ onSave, defaultGPs, sector, tier, onResultsChange }: {
                                             <th className="py-3 px-3 font-medium text-right">250ml</th>
                                             <th className="py-3 px-3 font-medium text-right">175ml</th>
                                             <th className="py-3 px-3 font-medium text-right">125ml</th>
+                                            <th className="py-3 px-3 font-medium text-right">1/2 Pt</th>
                                             <th className="py-3 px-3 font-medium text-right">GP</th>
                                         </>
                                     )}
@@ -1744,7 +1773,7 @@ const UploadCalc = ({ onSave, defaultGPs, sector, tier, onResultsChange }: {
                                         <>
                                             <th className="py-3 px-3 font-medium text-right">Cost/100ml</th>
                                             <th className="py-3 px-3 font-medium text-right">Pint</th>
-                                            <th className="py-3 px-3 font-medium text-right">Half</th>
+                                            <th className="py-3 px-3 font-medium text-right">1/2 Pt</th>
                                             <th className="py-3 px-3 font-medium text-right">Current</th>
                                             <th className="py-3 px-3 font-medium text-right">GP</th>
                                         </>
@@ -1784,7 +1813,7 @@ const UploadCalc = ({ onSave, defaultGPs, sector, tier, onResultsChange }: {
                                                 <>
                                                     <td className="py-3 px-3 text-right text-slate-500 font-mono text-xs">{d["Current Cost (Ex-VAT)"]}</td>
                                                     <td className="py-3 px-3 text-right font-bold text-blue-600">{d["Recommended Pint"]}</td>
-                                                    <td className="py-3 px-3 text-right text-slate-600">{d["Recommended Half"]}</td>
+                                                    <td className="py-3 px-3 text-right text-slate-600">{d["Recommended 1/2 Pint"]}</td>
                                                     <td className="py-3 px-3 text-right text-slate-500">{d["Current Pint Price (Inc)"]}</td>
                                                     <td className={`py-3 px-3 text-right text-xs ${gpClass(d["Current GP"], d["Target GP"])}`}>{d["Current GP"]}</td>
                                                 </>
@@ -1805,6 +1834,7 @@ const UploadCalc = ({ onSave, defaultGPs, sector, tier, onResultsChange }: {
                                                     <td className="py-3 px-3 text-right text-slate-600">{d["Recommended 250ml"]}</td>
                                                     <td className="py-3 px-3 text-right text-slate-600">{d["Recommended 175ml"]}</td>
                                                     <td className="py-3 px-3 text-right text-slate-600">{d["Recommended 125ml"]}</td>
+                                                    <td className="py-3 px-3 text-right text-slate-600">{d["Recommended 1/2 Pint"]}</td>
                                                     <td className={`py-3 px-3 text-right text-xs ${gpClass(d["Current GP (Btl)"], d["Target GP"])}`}>{d["Current GP (Btl)"]}</td>
                                                 </>
                                             )}
@@ -1820,7 +1850,7 @@ const UploadCalc = ({ onSave, defaultGPs, sector, tier, onResultsChange }: {
                                                 <>
                                                     <td className="py-3 px-3 text-right text-slate-500 font-mono text-xs">{d["Cost per 100ml"] || "-"}</td>
                                                     <td className="py-3 px-3 text-right font-bold text-blue-600">{d["Recommended Pint"]}</td>
-                                                    <td className="py-3 px-3 text-right text-slate-600">{d["Recommended Half"]}</td>
+                                                    <td className="py-3 px-3 text-right text-slate-600">{d["Recommended 1/2 Pint"]}</td>
                                                     <td className="py-3 px-3 text-right text-slate-500">{d["Current Price"]} ({d["Current Price Unit"]})</td>
                                                     <td className={`py-3 px-3 text-right text-xs ${gpClass(d["Current GP"], d["Target GP"])}`}>{d["Current GP"]}</td>
                                                 </>
@@ -1929,7 +1959,7 @@ const calculateRow = (row: Record<string, string>, group: ProductGroup, defaultG
             "Current Pint Price (Inc)": currSell > 0 ? `£${currSell.toFixed(2)}` : "-",
             "Current GP": currentGP !== null ? `${currentGP.toFixed(1)}%` : "-",
             "Recommended Pint": `£${recommPint.toFixed(2)}`,
-            "Recommended Half": `£${recommHalf.toFixed(2)}`,
+            "Recommended 1/2 Pint": `£${recommHalf.toFixed(2)}`,
         };
 
         return {
@@ -2170,7 +2200,7 @@ const calculateRow = (row: Record<string, string>, group: ProductGroup, defaultG
         "Recommended Pint": `£${pPint.toFixed(2)}`,
         "Recommended 16oz": `£${p16oz.toFixed(2)}`,
         "Recommended 12oz": `£${p12oz.toFixed(2)}`,
-        "Recommended Half": `£${pHalf.toFixed(2)}`,
+        "Recommended 1/2 Pint": `£${pHalf.toFixed(2)}`,
         "Recommended Dash": `£${pDash.toFixed(2)}`,
         "Current Price": currPint > 0 ? `£${currPint.toFixed(2)}` : "-",
         "Current Price Unit": "Pint",
@@ -2542,7 +2572,7 @@ export default function GPCalculatorPage() {
 
                                                 if (item.type === "Draught") {
                                                     fields.push(["Rec Pint", d["Recommended Pint"]]);
-                                                    fields.push(["Rec Half", d["Recommended Half"]]);
+                                                    fields.push(["Rec 1/2 Pt", d["Recommended 1/2 Pint"]]);
                                                     fields.push(["Target GP", d["Target GP"]]);
                                                     if (d["Current GP"]) fields.push(["Actual GP", d["Current GP"]]);
                                                 } else if (item.type === "Spirits") {
@@ -2555,6 +2585,7 @@ export default function GPCalculatorPage() {
                                                     fields.push(["Rec 250ml", d["Recommended 250ml"]]);
                                                     fields.push(["Rec 175ml", d["Recommended 175ml"]]);
                                                     fields.push(["Rec 125ml", d["Recommended 125ml"]]);
+                                                    fields.push(["Rec 1/2 Pt", d["Recommended 1/2 Pint"]]);
                                                     fields.push(["Target GP", d["Target GP"]]);
                                                 } else if (item.type === "Soft Drinks") {
                                                     fields.push(["Rec Price", d["Recommended Price"]]);
@@ -2564,7 +2595,7 @@ export default function GPCalculatorPage() {
                                                     fields.push(["Rec Pint", d["Recommended Pint"]]);
                                                     fields.push(["Rec 16oz", d["Recommended 16oz"]]);
                                                     fields.push(["Rec 12oz", d["Recommended 12oz"]]);
-                                                    fields.push(["Rec Half", d["Recommended Half"]]);
+                                                    fields.push(["Rec 1/2 Pt", d["Recommended 1/2 Pint"]]);
                                                     fields.push(["Rec Dash", d["Recommended Dash"]]);
                                                     fields.push(["Target GP", d["Target GP"]]);
                                                     if (d["Current GP"]) fields.push(["Actual GP", d["Current GP"]]);
@@ -2735,7 +2766,7 @@ export default function GPCalculatorPage() {
 
                                             if (type === "Draught") {
                                                 addReportRow("Pint", d["Recommended Pint"], d["Current Pint Price (Inc)"], d["New Total Cost (Ex-VAT)"]);
-                                                addReportRow("Half", d["Recommended Half"], "-", d["Half Surcharge"] && d["Half Surcharge"] !== "£0.00" ? `Sur: ${d["Half Surcharge"]}` : "-");
+                                                addReportRow("1/2 Pint", d["Recommended 1/2 Pint"], d["Current 1/2 Pint Price (Inc)"] || "-", d["Half Surcharge"] && d["Half Surcharge"] !== "£0.00" ? `Sur: ${d["Half Surcharge"]}` : "-");
                                             } else if (type === "Spirits") {
                                                 addReportRow("25ml", d["Recommended 25ml"], d["Current 25ml Price"], d["New Bottle Cost (Ex-VAT)"]);
                                                 addReportRow("50ml", d["Recommended 50ml"], "-", "-");
@@ -2749,7 +2780,7 @@ export default function GPCalculatorPage() {
                                             } else if (type === "Post Mix") {
                                                 const unit = d["Current Price Unit"] || "Pint";
                                                 addReportRow("Pint", d["Recommended Pint"], unit === "Pint" ? d["Current Price"] : "-", d["BIB Cost (Ex-VAT)"]);
-                                                addReportRow("Half", d["Recommended Half"], unit === "1/2 Pint" ? d["Current Price"] : "-", "-");
+                                                addReportRow("1/2 Pint", d["Recommended 1/2 Pint"], unit === "1/2 Pint" ? d["Current Price"] : "-", "-");
                                                 addReportRow("16oz", d["Recommended 16oz"], unit === "16oz" ? d["Current Price"] : "-", "-");
                                                 addReportRow("12oz", d["Recommended 12oz"], unit === "12oz" ? d["Current Price"] : "-", "-");
                                                 addReportRow("Dash", d["Recommended Dash"], "-", "-");
@@ -2852,7 +2883,7 @@ export default function GPCalculatorPage() {
 
                                     if (type === "Draught") {
                                         addReportRow("Pint", d["Recommended Pint"], d["Current Pint Price (Inc)"], d["New Total Cost (Ex-VAT)"]);
-                                        addReportRow("Half", d["Recommended Half"], "-", d["Half Surcharge"] && d["Half Surcharge"] !== "£0.00" ? `Sur: ${d["Half Surcharge"]}` : "-");
+                                        addReportRow("1/2 Pint", d["Recommended 1/2 Pint"], "-", d["Half Surcharge"] && d["Half Surcharge"] !== "£0.00" ? `Sur: ${d["Half Surcharge"]}` : "-");
                                     } else if (type === "Spirits") {
                                         addReportRow("25ml", d["Recommended 25ml"], d["Current 25ml Price"], d["New Bottle Cost (Ex-VAT)"]);
                                         addReportRow("50ml", d["Recommended 50ml"], "-", "-");
@@ -2866,7 +2897,7 @@ export default function GPCalculatorPage() {
                                     } else if (type === "Post Mix") {
                                         const unit = d["Current Price Unit"] || "Pint";
                                         addReportRow("Pint", d["Recommended Pint"], unit === "Pint" ? d["Current Price"] : "-", d["BIB Cost (Ex-VAT)"]);
-                                        addReportRow("Half", d["Recommended Half"], unit === "1/2 Pint" ? d["Current Price"] : "-", "-");
+                                        addReportRow("1/2 Pint", d["Recommended 1/2 Pint"], unit === "1/2 Pint" ? d["Current Price"] : "-", "-");
                                         addReportRow("16oz", d["Recommended 16oz"], unit === "16oz" ? d["Current Price"] : "-", "-");
                                         addReportRow("12oz", d["Recommended 12oz"], unit === "12oz" ? d["Current Price"] : "-", "-");
                                         addReportRow("Dash", d["Recommended Dash"], "-", "-");

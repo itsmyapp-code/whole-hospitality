@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import BarStealthCamera, { BarStealthCameraRef } from "./BarStealthCamera";
+import { generateUniversalPDF } from "../utils/pdfGenerator";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -162,303 +163,53 @@ export default function CovertAuditPage() {
   };
 
   // PDF Export Logic
-  const exportPDF = () => {
-    const doc = new jsPDF();
-
-    // 1. Header
-    doc.setFontSize(18);
-    doc.text("Covert Bar Premises Audit Report", 14, 20);
-    
-    doc.setFontSize(11);
-    doc.text(`Site Name: ${siteName || "Not Specified"}`, 14, 30);
-    doc.text(`Auditor: ${auditorName || "Not Specified"}`, 14, 36);
-    doc.text(`Date of Export: ${new Date().toLocaleString('en-GB')}`, 14, 42);
-
-    // 2. Executive Summary
-    doc.setFontSize(14);
-    doc.text("Executive Summary", 14, 55);
-
-    // Negative Summary
-    const negativeSummaryData = [
-      ['Free Pours', metrics.freePours.length],
-      ['Incorrect Measures', metrics.incorrectMeasures.length],
-      ['No Ring Ins', metrics.noRingIns.length],
-      ['Charge Discrepancies', metrics.chargeDiscrepancies.length],
-      ['Till Left Open', metrics.tillLeftOpen.length],
-      ['Unrecorded Wastage', metrics.unrecordedWastage.length],
-      ['Giving Away Drinks', metrics.givingAwayDrinks.length],
-      ['Dirty Glassware', metrics.dirtyGlassware.length],
-      ['Using Phone', metrics.usingPhone.length],
-      ['Eating / Drinking', metrics.eatingDrinking.length],
-      ['Underage Staff', metrics.underageStaff.length],
-      ['No ID Check', metrics.noIdCheck.length],
-    ];
-
-    autoTable(doc, {
-      startY: 60,
-      head: [['Negative Infractions', 'Total Incidents']],
-      body: negativeSummaryData.filter(row => (row[1] as number) > 0),
-      theme: 'grid',
-      headStyles: { fillColor: [220, 38, 38] }, // Red header for negative
-      margin: { bottom: 30 }
-    });
-
-    let finalY = (doc as any).lastAutoTable.finalY + 15;
-
-    // Positive Summary
-    const positiveSummaryData = [
-      ['Immediate Ring-In', metrics.immediateRingIn.length],
-      ['Consistent Till Closure', metrics.consistentTillClosure.length],
-      ['Accurate Change Verifications', metrics.accurateChangeVerifications.length],
-      ['Immediate Greeting', metrics.immediateGreeting.length],
-      ['Upselling', metrics.upselling.length],
-      ['Efficiency Under Pressure', metrics.efficiencyUnderPressure.length],
-      ['Exact Measure Pouring', metrics.exactMeasurePouring.length],
-      ['Active Spill Logging', metrics.activeSpillLogging.length],
-      ['Perfect Glassware', metrics.perfectGlassware.length],
-      ['Proactive Age Verification', metrics.proactiveAgeVerification.length],
-      ['Responsible Service', metrics.responsibleService.length],
-      ['Cleanliness Maintenance', metrics.cleanlinessMaintenance.length],
-    ];
-
-    const activePositive = positiveSummaryData.filter(row => (row[1] as number) > 0);
-    if (activePositive.length > 0) {
-      autoTable(doc, {
-        startY: finalY,
-        head: [['Positive Observations', 'Total Commendations']],
-        body: activePositive,
-        theme: 'grid',
-        headStyles: { fillColor: [16, 185, 129] }, // Green header for positive
-        margin: { bottom: 30 }
-      });
-      finalY = (doc as any).lastAutoTable.finalY + 15;
-    }
-
-    // 3. Staff Breakdown
-    if (staffList.length > 1) {
-      doc.setFontSize(14);
-      doc.text("Staff Breakdown", 14, finalY);
-
-      const staffBreakdownData: any[] = [];
-      staffList.forEach(staffMem => {
-        let staffTotal = 0;
-        const allKeys = Object.keys(metrics).filter(k => k !== 'photosTaken' && k !== 'timeToGreetSecs' && k !== 'timeToServeSecs') as (keyof typeof metrics)[];
-        allKeys.forEach(k => {
-          staffTotal += (metrics[k] as InfractionEvent[]).filter(e => e.staff === staffMem).length;
-        });
-        if (staffTotal > 0 || staffMem !== "General / Unknown") {
-           staffBreakdownData.push([staffMem, staffTotal]);
-        }
-      });
-
-      if (staffBreakdownData.length > 0) {
-        autoTable(doc, {
-          startY: finalY + 5,
-          head: [['Staff Member / Description', 'Total Infractions Logged']],
-          body: staffBreakdownData,
-          theme: 'grid',
-          margin: { bottom: 30 }
-        });
-        finalY = (doc as any).lastAutoTable.finalY + 15;
-      }
-    }
-
-    // 4. Chronological Event Log
-    const events: any[] = [];
-    
-    // Add Negative
-    const addEvents = (arr: InfractionEvent[], type: string) => {
-      arr.forEach(e => events.push({ type, time: new Date(e.timestamp), staff: e.staff || "Unknown" }));
-    };
-
-    addEvents(metrics.freePours, 'Free Pour');
-    addEvents(metrics.incorrectMeasures, 'Incorrect Measure');
-    addEvents(metrics.noRingIns, 'No Ring In');
-    addEvents(metrics.chargeDiscrepancies, 'Charge Discrepancy');
-    addEvents(metrics.tillLeftOpen, 'Till Left Open');
-    addEvents(metrics.unrecordedWastage, 'Unrecorded Wastage');
-    addEvents(metrics.givingAwayDrinks, 'Giving Away Drinks');
-    addEvents(metrics.dirtyGlassware, 'Dirty Glassware');
-    addEvents(metrics.usingPhone, 'Using Phone on Shift');
-    addEvents(metrics.eatingDrinking, 'Eating/Drinking Behind Bar');
-    addEvents(metrics.underageStaff, 'Underage Staff Serving');
-    addEvents(metrics.noIdCheck, 'No ID Check');
-
-    // Add Positive
-    addEvents(metrics.immediateRingIn, '🌟 Immediate Ring-In');
-    addEvents(metrics.consistentTillClosure, '🔒 Consistent Till Closure');
-    addEvents(metrics.accurateChangeVerifications, '💷 Accurate Change Verifications');
-    addEvents(metrics.immediateGreeting, '👋 Immediate Greeting');
-    addEvents(metrics.upselling, '📈 Upselling / Upgrades');
-    addEvents(metrics.efficiencyUnderPressure, '⚡ Efficiency Under Pressure');
-    addEvents(metrics.exactMeasurePouring, '⚖️ Exact Measure Pouring');
-    addEvents(metrics.activeSpillLogging, '📝 Active Spill Logging');
-    addEvents(metrics.perfectGlassware, '🍷 Perfect Glassware');
-    addEvents(metrics.proactiveAgeVerification, '🆔 Proactive Age Verification');
-    addEvents(metrics.responsibleService, '🛑 Responsible Service');
-    addEvents(metrics.cleanlinessMaintenance, '✨ Cleanliness Maintenance');
-
-    metrics.timeToGreetSecs.forEach(t => events.push({ type: 'Time to Greet', time: new Date(t.timestamp), staff: t.staff, detail: `${t.duration} seconds` }));
-    metrics.timeToServeSecs.forEach(t => events.push({ type: 'Time to Serve', time: new Date(t.timestamp), staff: t.staff, detail: `${t.duration} seconds` }));
-
-    // Sort chronologically
-    events.sort((a, b) => a.time.getTime() - b.time.getTime());
-
-    doc.setFontSize(14);
-    doc.text("Chronological Event Log", 14, finalY);
-
-    const logBody = events.map(e => [
-      e.time.toLocaleTimeString('en-GB', { hour12: false }),
-      e.staff,
-      e.type,
-      e.detail || "-"
-    ]);
-
-    if (events.length > 0) {
-      autoTable(doc, {
-        startY: finalY + 5,
-        head: [['Time', 'Staff', 'Event', 'Details']],
-        body: logBody,
-        theme: 'striped',
-        margin: { bottom: 30 }
-      });
-      finalY = (doc as any).lastAutoTable.finalY + 15;
-    } else {
-      doc.setFontSize(10);
-      doc.text("No events logged.", 14, finalY + 8);
-      finalY += 15;
-    }
-
-    // 5. Photographic Evidence
+  const exportPDF = async () => {
+    let captures = [];
     try {
-      const captures = JSON.parse(localStorage.getItem('audit_captures') || '[]');
-      if (captures.length > 0) {
-        doc.addPage();
-        doc.setFontSize(14);
-        doc.text("Photographic Evidence", 14, 20);
-        
-        let yPos = 30;
-        captures.forEach((cap: any, index: number) => {
-          if (yPos > 240) { // Keep away from bottom margin (approx 297 height)
-            doc.addPage();
-            yPos = 20;
-          }
-          doc.setFontSize(10);
-          doc.text(`Evidence #${index + 1} - Captured: ${new Date(cap.timestamp).toLocaleString('en-GB')}`, 14, yPos);
-          
-          doc.addImage(cap.dataUrl, 'JPEG', 14, yPos + 5, 120, 90);
-          yPos += 105;
-        });
+      captures = JSON.parse(localStorage.getItem('audit_captures') || '[]');
+    } catch (e) {}
+
+    await generateUniversalPDF({
+      moduleType: "BAR",
+      siteName,
+      auditorName,
+      staffList,
+      captures,
+      metrics: {
+        negative: [
+          { label: 'Free Pours', count: metrics.freePours.length, events: metrics.freePours },
+          { label: 'Incorrect Measures', count: metrics.incorrectMeasures.length, events: metrics.incorrectMeasures },
+          { label: 'No Ring Ins', count: metrics.noRingIns.length, events: metrics.noRingIns },
+          { label: 'Charge Discrepancies', count: metrics.chargeDiscrepancies.length, events: metrics.chargeDiscrepancies },
+          { label: 'Till Left Open', count: metrics.tillLeftOpen.length, events: metrics.tillLeftOpen },
+          { label: 'Unrecorded Wastage', count: metrics.unrecordedWastage.length, events: metrics.unrecordedWastage },
+          { label: 'Giving Away Drinks', count: metrics.givingAwayDrinks.length, events: metrics.givingAwayDrinks },
+          { label: 'Dirty Glassware', count: metrics.dirtyGlassware.length, events: metrics.dirtyGlassware },
+          { label: 'Using Phone', count: metrics.usingPhone.length, events: metrics.usingPhone },
+          { label: 'Eating / Drinking', count: metrics.eatingDrinking.length, events: metrics.eatingDrinking },
+          { label: 'Underage Staff', count: metrics.underageStaff.length, events: metrics.underageStaff },
+          { label: 'No ID Check', count: metrics.noIdCheck.length, events: metrics.noIdCheck },
+        ],
+        positive: [
+          { label: 'Immediate Ring-In', count: metrics.immediateRingIn.length, events: metrics.immediateRingIn },
+          { label: 'Consistent Till Closure', count: metrics.consistentTillClosure.length, events: metrics.consistentTillClosure },
+          { label: 'Accurate Change Verifications', count: metrics.accurateChangeVerifications.length, events: metrics.accurateChangeVerifications },
+          { label: 'Immediate Greeting', count: metrics.immediateGreeting.length, events: metrics.immediateGreeting },
+          { label: 'Upselling', count: metrics.upselling.length, events: metrics.upselling },
+          { label: 'Efficiency Under Pressure', count: metrics.efficiencyUnderPressure.length, events: metrics.efficiencyUnderPressure },
+          { label: 'Exact Measure Pouring', count: metrics.exactMeasurePouring.length, events: metrics.exactMeasurePouring },
+          { label: 'Active Spill Logging', count: metrics.activeSpillLogging.length, events: metrics.activeSpillLogging },
+          { label: 'Perfect Glassware', count: metrics.perfectGlassware.length, events: metrics.perfectGlassware },
+          { label: 'Proactive Age Verification', count: metrics.proactiveAgeVerification.length, events: metrics.proactiveAgeVerification },
+          { label: 'Responsible Service', count: metrics.responsibleService.length, events: metrics.responsibleService },
+          { label: 'Cleanliness Maintenance', count: metrics.cleanlinessMaintenance.length, events: metrics.cleanlinessMaintenance },
+        ],
+        timers: [
+          { label: 'Time to Greet', events: metrics.timeToGreetSecs },
+          { label: 'Time to Serve', events: metrics.timeToServeSecs },
+        ]
       }
-    } catch (e) {
-      console.warn("Could not attach photos to PDF", e);
-    }
-
-    // 6. Add Compliance Framework Appendix
-    doc.addPage();
-    doc.setFontSize(16);
-    doc.setTextColor(0, 0, 0);
-    doc.text("Appendix: Legal Standing & Deployment Guide", 14, 20);
-
-    const complianceData = [
-      [{ content: "1. Core Compliance Facts: Where Whole Hospitality Stands", styles: { fontStyle: 'bold', fontSize: 12 } }],
-      ["Zero-Server Architecture Immunity: The application operates strictly as a local processing engine using client-side React logic. Because zero personal profiles, timestamp logs, or captured images are ever transmitted to or stored on an external network, Whole Hospitality does not possess, harvest, or process user session data."],
-      ["Neutral Utility Designation: Whole Hospitality is legally classified as a neutral software utility provider. The software stands in the exact same regulatory category as an offline spreadsheet or a local text editor."],
-      ["Regulatory Exemption: Because Whole Hospitality never handles or determines the destination of the audit data, Whole Hospitality is not a Data Controller nor a Data Processor under the UK GDPR and Data Protection Act 2018. The platform is entirely insulated from data processing liabilities, data breach regimes, and Subject Access Requests (SARs)."],
-      ["Immediate Client-Side Data Erasure: To enforce strict operational confidentiality, tapping \"Start New Audit\" completely purges all local session variables, nested state configurations, and temporary browser local storage. No recovery infrastructure exists on the network to retrieve purged logs."],
-      [{ content: "2. Mandatory Instructions for Venue Operators (The Data Controllers)", styles: { fontStyle: 'bold', fontSize: 12, cellPadding: { top: 10 } } }],
-      ["Under UK law, the venue operator utilizing this app assumes 100% of the legal status of the Data Controller. To ensure that any exported PDF report stands up as admissible evidence in an employment disciplinary hearing or tribunal, operators must adhere strictly to the following parameters:"],
-      ["The Proportionality Window (1–2 Weeks Max): Covert monitoring must be strictly time-limited. To comply with Information Commissioner's Office (ICO) guidelines, a targeted audit should run no longer than 1 to 2 weeks, or be confined to a handful of high-risk shifts to catch a specific pattern of financial leakage. Indefinite or continuous routine tracking is unlawful."],
-      ["Establish Legitimate Interest: The audit must only be deployed where senior management has a reasonable, documented suspicion of financial leakage, internal theft, fraud, or gross operational malpractice. Using the tool for casual or continuous employee performance trailing is prohibited."],
-      ["Public Floor Boundary Safety: This tool is designed exclusively for use on the public trading floor of the venue (the main bar counter, till areas, and floor service areas). In accordance with UK employment case law, employees serving the public have a reduced expectation of privacy in these spaces. It must never be used in private staff zones, changing rooms, or break areas."],
-      ["Immediate Cessation of Tracking: The moment \"the smoking gun\" evidence is gathered and verified to initiate formal disciplinary action, covert monitoring must stop immediately."],
-      ["Mandatory Pre-Audit DPIA: Before launching an audit, operators are legally required to have a completed Data Protection Impact Assessment (DPIA) on file that explicitly details why a time-limited, covert cash-loss investigation is necessary and proportionate for their business."],
-      [{ content: "3. Website Legal Disclaimer Notice", styles: { fontStyle: 'bold', fontSize: 12, cellPadding: { top: 10 } } }],
-      ["Disclaimer for Users: Whole Hospitality provides the Covert Bar Premises Audit Tool as an offline-first analytical utility. Whole Hospitality does not provide legal counsel or employment law representation. The venue operator assumes full responsibility for ensuring their deployment of this software aligns with the UK GDPR, the Data Protection Act 2018, and local employment laws. Exported PDF files are standalone evidentiary objects; custody, protection, and legal admissibility of the generated reports rest solely with the Data Controller."]
-    ];
-
-    autoTable(doc, {
-      startY: 30,
-      body: complianceData as any,
-      theme: 'plain',
-      styles: { fontSize: 10, cellPadding: 2, textColor: [50, 50, 50] },
-      columnStyles: { 0: { cellWidth: 'auto' } },
-      margin: { bottom: 30 }
     });
-
-    // 7. Draw Legal Footer on Every Page
-    const pageCount = (doc as any).internal.getNumberOfPages();
-    const pageWidth = (doc as any).internal.pageSize.getWidth();
-    const pageHeight = (doc as any).internal.pageSize.getHeight();
-    const exportTimestamp = new Date().toLocaleString('en-GB');
-
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      
-      // Separator Line
-      doc.setDrawColor(100, 116, 139); // slate-500
-      doc.setLineWidth(0.5);
-      doc.line(14, pageHeight - 25, pageWidth - 14, pageHeight - 25);
-      
-      // Footer Text Style
-      doc.setFontSize(8);
-      doc.setTextColor(100, 116, 139); 
-      
-      // Column Left
-      doc.text("CONFIDENTIAL", 14, pageHeight - 19);
-      doc.text("Targeted Covert Investigation Audit", 14, pageHeight - 15);
-      doc.text(`Page ${i} of ${pageCount}`, 14, pageHeight - 11);
-      doc.text("wholehospitality.co.uk", 14, pageHeight - 7);
-      
-      // Column Center
-      const centerText = "Adheres to UK GDPR & ICO Workplace Monitoring Guidelines";
-      const textWidth = doc.getTextWidth(centerText);
-      doc.text(centerText, (pageWidth - textWidth) / 2, pageHeight - 19);
-      
-      // Column Right
-      doc.text("Data Controller Local Device Export:", pageWidth - 14, pageHeight - 19, { align: "right" });
-      doc.text(`[${exportTimestamp}]`, pageWidth - 14, pageHeight - 15, { align: "right" });
-    }
-
-    // Download
-    const filename = `Audit_${siteName.replace(/\s+/g, '_') || 'Report'}_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(filename);
-
-    // 8. Open Email Client
-    const subject = encodeURIComponent(`[CONFIDENTIAL] Covert Audit Report: ${siteName || 'Venue'} - ${new Date().toLocaleDateString('en-GB')}`);
-    
-    // Calculate total infractions for the email body
-    const allMetrics = [
-      metrics.freePours, metrics.incorrectMeasures, metrics.noRingIns, 
-      metrics.chargeDiscrepancies, metrics.tillLeftOpen, metrics.unrecordedWastage, 
-      metrics.givingAwayDrinks, metrics.dirtyGlassware, metrics.usingPhone, 
-      metrics.eatingDrinking, metrics.underageStaff, metrics.noIdCheck,
-      metrics.immediateRingIn, metrics.consistentTillClosure, metrics.accurateChangeVerifications,
-      metrics.immediateGreeting, metrics.upselling, metrics.efficiencyUnderPressure,
-      metrics.exactMeasurePouring, metrics.activeSpillLogging, metrics.perfectGlassware,
-      metrics.proactiveAgeVerification, metrics.responsibleService, metrics.cleanlinessMaintenance
-    ];
-    const totalObservations = allMetrics.reduce((sum, arr) => sum + arr.length, 0);
-
-    const body = encodeURIComponent(`CONFIDENTIAL TARGETED AUDIT REPORT
-    
-Site Name: ${siteName || 'Not Specified'}
-Auditor: ${auditorName || 'Not Specified'}
-Date: ${new Date().toLocaleString('en-GB')}
-Total Observations Logged: ${totalObservations}
-
-Please find the detailed PDF Executive Summary, Staff Breakdown, and Photographic Evidence attached to this email.
-
-*** IMPORTANT: Please remember to manually attach the '${filename}' file that was just saved to your device! ***
-
---
-Generated via Whole Hospitality Covert Audit Utility`);
-
-    // Add a slight delay so the PDF has time to save before the browser redirects to the mailto link
-    setTimeout(() => {
-      window.location.href = `mailto:?subject=${subject}&body=${body}`;
-    }, 500);
-
   };
 
   if (isPanicked) {
@@ -530,7 +281,7 @@ Generated via Whole Hospitality Covert Audit Utility`);
           </div>
           <button 
             onClick={() => setIsPanicked(true)}
-            className="flex-1 py-5 text-slate-600 font-mono text-[10px] tracking-widest opacity-80 hover:bg-slate-900 transition-colors"
+            className="flex-1 py-4 text-slate-500 font-mono text-xs font-bold tracking-widest opacity-80 hover:bg-slate-900 transition-colors"
           >
             [ SAFE MODE ]
           </button>
