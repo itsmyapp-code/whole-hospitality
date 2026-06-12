@@ -5,6 +5,8 @@ import BarStealthCamera, { BarStealthCameraRef } from "./BarStealthCamera";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+type InfractionEvent = { timestamp: string; staff: string };
+
 export default function CovertAuditPage() {
   const [isPanicked, setIsPanicked] = useState(false);
   
@@ -12,22 +14,27 @@ export default function CovertAuditPage() {
   const [siteName, setSiteName] = useState("");
   const [auditorName, setAuditorName] = useState("");
 
+  // Staff Tracker State
+  const [staffList, setStaffList] = useState<string[]>(["General / Unknown"]);
+  const [activeStaff, setActiveStaff] = useState<string>("General / Unknown");
+  const [newStaffInput, setNewStaffInput] = useState("");
+
   // Audit Metrics State
   const [metrics, setMetrics] = useState({
-    freePours: [] as string[],
-    incorrectMeasures: [] as string[],
-    noRingIns: [] as string[],
-    chargeDiscrepancies: [] as string[],
-    tillLeftOpen: [] as string[],
-    unrecordedWastage: [] as string[],
-    givingAwayDrinks: [] as string[],
-    dirtyGlassware: [] as string[],
-    usingPhone: [] as string[],
-    eatingDrinking: [] as string[],
-    underageStaff: [] as string[],
-    noIdCheck: [] as string[],
-    timeToGreetSecs: [] as { timestamp: string, duration: number }[],
-    timeToServeSecs: [] as { timestamp: string, duration: number }[],
+    freePours: [] as InfractionEvent[],
+    incorrectMeasures: [] as InfractionEvent[],
+    noRingIns: [] as InfractionEvent[],
+    chargeDiscrepancies: [] as InfractionEvent[],
+    tillLeftOpen: [] as InfractionEvent[],
+    unrecordedWastage: [] as InfractionEvent[],
+    givingAwayDrinks: [] as InfractionEvent[],
+    dirtyGlassware: [] as InfractionEvent[],
+    usingPhone: [] as InfractionEvent[],
+    eatingDrinking: [] as InfractionEvent[],
+    underageStaff: [] as InfractionEvent[],
+    noIdCheck: [] as InfractionEvent[],
+    timeToGreetSecs: [] as { timestamp: string, duration: number, staff: string }[],
+    timeToServeSecs: [] as { timestamp: string, duration: number, staff: string }[],
     photosTaken: 0,
   });
 
@@ -37,11 +44,20 @@ export default function CovertAuditPage() {
 
   const cameraRef = useRef<BarStealthCameraRef>(null);
 
+  const handleAddStaff = () => {
+    if (newStaffInput.trim() && !staffList.includes(newStaffInput.trim())) {
+      const name = newStaffInput.trim();
+      setStaffList(prev => [...prev, name]);
+      setActiveStaff(name);
+      setNewStaffInput("");
+    }
+  };
+
   const logInfraction = (key: keyof typeof metrics) => {
     if (key === 'photosTaken' || key === 'timeToGreetSecs' || key === 'timeToServeSecs') return;
     setMetrics(prev => ({
       ...prev,
-      [key]: [...(prev[key] as string[]), new Date().toISOString()]
+      [key]: [...(prev[key] as InfractionEvent[]), { timestamp: new Date().toISOString(), staff: activeStaff }]
     }));
   };
 
@@ -50,7 +66,7 @@ export default function CovertAuditPage() {
       const elapsed = Math.round((Date.now() - greetTimerStart) / 1000);
       setMetrics(prev => ({ 
         ...prev, 
-        timeToGreetSecs: [...prev.timeToGreetSecs, { timestamp: new Date().toISOString(), duration: elapsed }] 
+        timeToGreetSecs: [...prev.timeToGreetSecs, { timestamp: new Date().toISOString(), duration: elapsed, staff: activeStaff }] 
       }));
       setGreetTimerStart(null);
     } else {
@@ -63,7 +79,7 @@ export default function CovertAuditPage() {
       const elapsed = Math.round((Date.now() - serveTimerStart) / 1000);
       setMetrics(prev => ({ 
         ...prev, 
-        timeToServeSecs: [...prev.timeToServeSecs, { timestamp: new Date().toISOString(), duration: elapsed }] 
+        timeToServeSecs: [...prev.timeToServeSecs, { timestamp: new Date().toISOString(), duration: elapsed, staff: activeStaff }] 
       }));
       setServeTimerStart(null);
     } else {
@@ -91,7 +107,7 @@ export default function CovertAuditPage() {
     doc.text(`Auditor: ${auditorName || "Not Specified"}`, 14, 36);
     doc.text(`Date of Export: ${new Date().toLocaleString()}`, 14, 42);
 
-    // 2. Summary Table
+    // 2. Executive Summary
     doc.setFontSize(14);
     doc.text("Executive Summary", 14, 55);
 
@@ -113,15 +129,45 @@ export default function CovertAuditPage() {
     autoTable(doc, {
       startY: 60,
       head: [['Infraction Type', 'Total Incidents']],
-      body: summaryData.filter(row => (row[1] as number) > 0), // Only show infractions that happened
+      body: summaryData.filter(row => (row[1] as number) > 0),
       theme: 'grid',
     });
 
-    // 3. Chronological Event Log
-    const events: { type: string; time: Date, detail?: string }[] = [];
+    let finalY = (doc as any).lastAutoTable.finalY + 15;
+
+    // 3. Staff Breakdown
+    if (staffList.length > 1) {
+      doc.setFontSize(14);
+      doc.text("Staff Breakdown", 14, finalY);
+
+      const staffBreakdownData: any[] = [];
+      staffList.forEach(staffMem => {
+        let staffTotal = 0;
+        const allKeys = Object.keys(metrics).filter(k => k !== 'photosTaken' && k !== 'timeToGreetSecs' && k !== 'timeToServeSecs') as (keyof typeof metrics)[];
+        allKeys.forEach(k => {
+          staffTotal += (metrics[k] as InfractionEvent[]).filter(e => e.staff === staffMem).length;
+        });
+        if (staffTotal > 0 || staffMem !== "General / Unknown") {
+           staffBreakdownData.push([staffMem, staffTotal]);
+        }
+      });
+
+      if (staffBreakdownData.length > 0) {
+        autoTable(doc, {
+          startY: finalY + 5,
+          head: [['Staff Member / Description', 'Total Infractions Logged']],
+          body: staffBreakdownData,
+          theme: 'grid',
+        });
+        finalY = (doc as any).lastAutoTable.finalY + 15;
+      }
+    }
+
+    // 4. Chronological Event Log
+    const events: { type: string; time: Date, staff: string, detail?: string }[] = [];
     
-    const addEvents = (arr: string[], label: string) => {
-      arr.forEach(ts => events.push({ type: label, time: new Date(ts) }));
+    const addEvents = (arr: InfractionEvent[], label: string) => {
+      arr.forEach(ev => events.push({ type: label, time: new Date(ev.timestamp), staff: ev.staff }));
     };
 
     addEvents(metrics.freePours, 'Free Pour');
@@ -137,18 +183,18 @@ export default function CovertAuditPage() {
     addEvents(metrics.underageStaff, 'Underage Staff Serving');
     addEvents(metrics.noIdCheck, 'No ID Check');
 
-    metrics.timeToGreetSecs.forEach(t => events.push({ type: 'Time to Greet', time: new Date(t.timestamp), detail: `${t.duration} seconds` }));
-    metrics.timeToServeSecs.forEach(t => events.push({ type: 'Time to Serve', time: new Date(t.timestamp), detail: `${t.duration} seconds` }));
+    metrics.timeToGreetSecs.forEach(t => events.push({ type: 'Time to Greet', time: new Date(t.timestamp), staff: t.staff, detail: `${t.duration} seconds` }));
+    metrics.timeToServeSecs.forEach(t => events.push({ type: 'Time to Serve', time: new Date(t.timestamp), staff: t.staff, detail: `${t.duration} seconds` }));
 
     // Sort chronologically
     events.sort((a, b) => a.time.getTime() - b.time.getTime());
 
-    let finalY = (doc as any).lastAutoTable.finalY + 15;
     doc.setFontSize(14);
     doc.text("Chronological Event Log", 14, finalY);
 
     const logBody = events.map(e => [
       e.time.toLocaleTimeString([], { hour12: false }),
+      e.staff,
       e.type,
       e.detail || "-"
     ]);
@@ -156,7 +202,7 @@ export default function CovertAuditPage() {
     if (events.length > 0) {
       autoTable(doc, {
         startY: finalY + 5,
-        head: [['Time', 'Event', 'Details']],
+        head: [['Time', 'Staff', 'Event', 'Details']],
         body: logBody,
         theme: 'striped',
       });
@@ -167,7 +213,7 @@ export default function CovertAuditPage() {
       finalY += 15;
     }
 
-    // 4. Photographic Evidence
+    // 5. Photographic Evidence
     try {
       const captures = JSON.parse(localStorage.getItem('audit_captures') || '[]');
       if (captures.length > 0) {
@@ -203,7 +249,6 @@ export default function CovertAuditPage() {
         className="fixed inset-0 z-[99999] bg-white flex flex-col"
         onClick={() => setIsPanicked(false)}
       >
-        {/* Fake Google Header */}
         <div className="flex justify-between items-center p-4">
           <div className="flex gap-4">
             <span className="text-sm hover:underline cursor-pointer">About</span>
@@ -216,7 +261,6 @@ export default function CovertAuditPage() {
           </div>
         </div>
 
-        {/* Fake Google Main Body */}
         <div className="flex-1 flex flex-col items-center justify-center -mt-20">
           <div className="text-8xl font-sans font-medium mb-8 flex tracking-tighter">
             <span className="text-[#4285F4]">G</span>
@@ -264,14 +308,14 @@ export default function CovertAuditPage() {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans p-4 pb-20">
       
-      {/* Panic Button */}
-      <div className="sticky top-0 z-50 mb-6 -mx-4 -mt-4 p-4 bg-slate-900/90 backdrop-blur border-b border-slate-800">
+      {/* Stealthy Panic Button */}
+      <div className="sticky top-0 z-50 mb-6 -mx-4 -mt-4 bg-slate-950/90 backdrop-blur border-b border-slate-900">
         <button 
           onClick={() => setIsPanicked(true)}
-          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-lg shadow-lg text-lg uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
+          className="w-full text-slate-600 hover:text-slate-300 py-3 text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-colors"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
-          PANIC / HIDE SCREEN
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+          [ Safe Mode ]
         </button>
       </div>
 
@@ -285,7 +329,7 @@ export default function CovertAuditPage() {
               type="text" 
               value={siteName}
               onChange={e => setSiteName(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white"
+              className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-sm"
               placeholder="E.g. The Red Lion"
             />
           </div>
@@ -295,7 +339,7 @@ export default function CovertAuditPage() {
               type="text" 
               value={auditorName}
               onChange={e => setAuditorName(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white"
+              className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white text-sm"
               placeholder="E.g. John Doe"
             />
           </div>
@@ -304,6 +348,43 @@ export default function CovertAuditPage() {
 
       <div className="space-y-6">
         
+        {/* Staff Tracker */}
+        <section className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center justify-between">
+            <span>Staff Tracker</span>
+            <span className="text-emerald-500 text-xs bg-emerald-500/10 px-2 py-0.5 rounded">Active: {activeStaff}</span>
+          </h2>
+          
+          <div className="flex flex-wrap gap-2 mb-4">
+            {staffList.map(staff => (
+              <button 
+                key={staff}
+                onClick={() => setActiveStaff(staff)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${activeStaff === staff ? 'bg-emerald-600 border-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500'}`}
+              >
+                {staff}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              value={newStaffInput}
+              onChange={e => setNewStaffInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddStaff()}
+              className="flex-1 bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm"
+              placeholder="Add staff (e.g. John, or Tall Male)"
+            />
+            <button 
+              onClick={handleAddStaff}
+              className="bg-slate-700 hover:bg-slate-600 px-4 rounded text-sm font-bold transition-colors"
+            >
+              Add
+            </button>
+          </div>
+        </section>
+
         {/* Actions Grid */}
         <section>
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Log Infractions</h2>
