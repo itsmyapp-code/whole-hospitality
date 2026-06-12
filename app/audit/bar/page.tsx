@@ -24,6 +24,9 @@ export default function CovertAuditPage() {
   const [siteName, setSiteName] = useState("");
   const [auditorName, setAuditorName] = useState("");
 
+  // Visual Feedback State
+  const [flashFeedback, setFlashFeedback] = useState(false);
+
   // Audit Metrics State (Now logs exact timestamps)
   const [metrics, setMetrics] = useState({
     freePours: [] as string[],
@@ -83,26 +86,41 @@ export default function CovertAuditPage() {
     }, 500);
   };
 
+  const provideFeedback = () => {
+    // 1. Haptic Vibration (works on most mobile devices)
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(50);
+    }
+    // 2. Subtle Visual Flash
+    setFlashFeedback(true);
+    setTimeout(() => setFlashFeedback(false), 300);
+  };
+
   // Triggers
   const logFreePour = () => {
+    provideFeedback();
     setMetrics(prev => ({ ...prev, freePours: [...prev.freePours, new Date().toISOString()] }));
   };
 
   const logIncorrectMeasure = (e: React.MouseEvent) => {
     e.stopPropagation();
+    provideFeedback();
     setMetrics(prev => ({ ...prev, incorrectMeasures: [...prev.incorrectMeasures, new Date().toISOString()] }));
   };
 
   const logNoRingIn = () => {
+    provideFeedback();
     setMetrics(prev => ({ ...prev, noRingIns: [...prev.noRingIns, new Date().toISOString()] }));
   };
 
   const logChargeDiscrepancy = () => {
+    provideFeedback();
     setMetrics(prev => ({ ...prev, chargeDiscrepancies: [...prev.chargeDiscrepancies, new Date().toISOString()] }));
   };
 
   const toggleGreetTimer = (e: React.MouseEvent) => {
     e.stopPropagation();
+    provideFeedback();
     if (greetTimerStart) {
       const elapsed = Math.round((Date.now() - greetTimerStart) / 1000);
       setMetrics(prev => ({ 
@@ -116,6 +134,7 @@ export default function CovertAuditPage() {
   };
 
   const toggleServeTimer = () => {
+    provideFeedback();
     if (serveTimerStart) {
       const elapsed = Math.round((Date.now() - serveTimerStart) / 1000);
       setMetrics(prev => ({ 
@@ -129,6 +148,7 @@ export default function CovertAuditPage() {
   };
 
   const triggerCamera = () => {
+    provideFeedback();
     if (cameraRef.current) {
       cameraRef.current.capturePhoto();
       setMetrics(prev => ({ ...prev, photosTaken: prev.photosTaken + 1 }));
@@ -273,7 +293,12 @@ export default function CovertAuditPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-400 font-sans selection:bg-neutral-800">
+    <div className="min-h-screen bg-neutral-950 text-neutral-400 font-sans selection:bg-neutral-800 relative">
+      {/* Subtle Visual Feedback Dot */}
+      <div 
+        className={`fixed top-1 left-1 w-1 h-1 rounded-full z-50 transition-opacity duration-100 ${flashFeedback ? 'opacity-100 bg-neutral-500' : 'opacity-0 bg-transparent'}`} 
+      />
+
       {/* Top Nav - Panic Switch */}
       <nav 
         onClick={handleNavTap}
