@@ -91,8 +91,11 @@ export default function RestaurantAuditPage() {
 
   if (isPanicked) {
     return (
-      <div className="fixed inset-0 z-[99999] bg-white text-black font-sans flex flex-col h-screen w-screen overflow-hidden">
-        <div className="bg-[#f8f9fa] border-b border-gray-200">
+      <div 
+        className="fixed inset-0 z-[99999] bg-white text-black font-sans flex flex-col h-screen w-screen overflow-hidden cursor-default"
+        onClick={() => setIsPanicked(false)}
+      >
+        <div className="bg-[#f8f9fa] border-b border-gray-200" onClick={(e) => e.stopPropagation()}>
           <div className="flex justify-between items-center p-4">
             <div className="flex gap-4">
               <span className="text-sm hover:underline cursor-pointer">About</span>
