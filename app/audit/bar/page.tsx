@@ -170,6 +170,7 @@ export default function CovertAuditPage() {
       head: [['Infraction Type', 'Total Incidents']],
       body: summaryData.filter(row => (row[1] as number) > 0),
       theme: 'grid',
+      margin: { bottom: 30 }
     });
 
     let finalY = (doc as any).lastAutoTable.finalY + 15;
@@ -197,6 +198,7 @@ export default function CovertAuditPage() {
           head: [['Staff Member / Description', 'Total Infractions Logged']],
           body: staffBreakdownData,
           theme: 'grid',
+          margin: { bottom: 30 }
         });
         finalY = (doc as any).lastAutoTable.finalY + 15;
       }
@@ -244,6 +246,7 @@ export default function CovertAuditPage() {
         head: [['Time', 'Staff', 'Event', 'Details']],
         body: logBody,
         theme: 'striped',
+        margin: { bottom: 30 }
       });
       finalY = (doc as any).lastAutoTable.finalY + 15;
     } else {
@@ -262,7 +265,7 @@ export default function CovertAuditPage() {
         
         let yPos = 30;
         captures.forEach((cap: any, index: number) => {
-          if (yPos > 240) {
+          if (yPos > 240) { // Keep away from bottom margin (approx 297 height)
             doc.addPage();
             yPos = 20;
           }
@@ -275,6 +278,40 @@ export default function CovertAuditPage() {
       }
     } catch (e) {
       console.warn("Could not attach photos to PDF", e);
+    }
+
+    // 6. Draw Legal Footer on Every Page
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    const pageWidth = (doc as any).internal.pageSize.getWidth();
+    const pageHeight = (doc as any).internal.pageSize.getHeight();
+    const exportTimestamp = new Date().toLocaleString();
+
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      
+      // Separator Line
+      doc.setDrawColor(100, 116, 139); // slate-500
+      doc.setLineWidth(0.5);
+      doc.line(14, pageHeight - 25, pageWidth - 14, pageHeight - 25);
+      
+      // Footer Text Style
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139); 
+      
+      // Column Left
+      doc.text("CONFIDENTIAL", 14, pageHeight - 19);
+      doc.text("Targeted Covert Investigation Audit", 14, pageHeight - 15);
+      doc.text(`Page ${i} of ${pageCount}`, 14, pageHeight - 11);
+      doc.text("wholehospitality.co.uk", 14, pageHeight - 7);
+      
+      // Column Center
+      const centerText = "Adheres to UK GDPR & ICO Workplace Monitoring Guidelines";
+      const textWidth = doc.getTextWidth(centerText);
+      doc.text(centerText, (pageWidth - textWidth) / 2, pageHeight - 19);
+      
+      // Column Right
+      doc.text("Data Controller Local Device Export:", pageWidth - 14, pageHeight - 19, { align: "right" });
+      doc.text(`[${exportTimestamp}]`, pageWidth - 14, pageHeight - 15, { align: "right" });
     }
 
     // Download
