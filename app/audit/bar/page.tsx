@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import BarStealthCamera, { BarStealthCameraRef } from "./BarStealthCamera";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -384,15 +385,22 @@ export default function CovertAuditPage() {
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900 text-slate-100 font-sans p-4 pb-20">
       
-      {/* Stealthy Panic Button */}
+      {/* Stealthy Panic Button Header */}
       <div className="sticky top-0 z-50 mb-6 -mx-4 -mt-4 bg-slate-950/90 backdrop-blur border-b border-slate-900">
-        <button 
-          onClick={() => setIsPanicked(true)}
-          className="w-full text-slate-600 hover:text-slate-300 py-3 text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-colors"
-        >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
-          [ Safe Mode ]
-        </button>
+        <div className="flex items-center justify-between px-4 py-3">
+          <Link href="/" className="text-slate-600 hover:text-slate-400 transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+          </Link>
+          <button 
+            onClick={() => setIsPanicked(true)}
+            className="text-slate-600 font-mono text-[10px] tracking-widest opacity-80"
+          >
+            [ SAFE MODE ]
+          </button>
+          <div className="w-5"></div> {/* Spacer to keep Safe Mode perfectly centered */}
+        </div>
       </div>
 
       <header className="mb-6 space-y-4">

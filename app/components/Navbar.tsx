@@ -83,12 +83,6 @@ export default function Navbar() {
                             >
                                 Book Audit
                             </Link>
-                            <Link
-                                href="/audit/bar"
-                                className="bg-emerald-600 text-white hover:bg-emerald-500 px-5 py-2 rounded-full text-sm font-bold transition-all transform hover:scale-105"
-                            >
-                                Start Audit App
-                            </Link>
                         </div>
                     </div>
 
@@ -133,13 +127,6 @@ export default function Navbar() {
                             className="block w-full text-center bg-white text-gray-900 hover:bg-gray-100 px-5 py-3 rounded-full text-base font-bold transition-all"
                         >
                             Book Audit
-                        </Link>
-                        <Link
-                            href="/audit/bar"
-                            onClick={() => setIsOpen(false)}
-                            className="block w-full text-center bg-emerald-600 text-white hover:bg-emerald-500 px-5 py-3 rounded-full text-base font-bold transition-all"
-                        >
-                            Start Audit App
                         </Link>
                     </div>
                 </div>

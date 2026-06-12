@@ -9,10 +9,10 @@ export default function Footer() {
 
                 <div className="flex flex-wrap gap-6 text-sm">
                     <a href="/#contact" className="hover:text-white transition-colors">Contact</a>
-                    <a href="/audit/bar" className="hover:text-emerald-400 font-medium transition-colors">Start Audit App</a>
                     <a href="/legal/compliance-framework" className="hover:text-white transition-colors">Legal & Compliance</a>
                     <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
                     <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+                    <a href="/audit/bar" className="hover:text-white text-slate-700 transition-colors">ADMIN</a>
                 </div>
             </div>
 
