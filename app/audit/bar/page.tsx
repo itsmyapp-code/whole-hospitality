@@ -547,6 +547,20 @@ export default function CovertAuditPage() {
           </button>
         </section>
 
+        {/* Legal & Compliance Footer */}
+        <section className="pt-8 pb-12 text-center text-slate-500 text-xs px-2">
+          <p className="mb-2">
+            <strong>Disclaimer:</strong> This is an offline-first analytical utility. Whole Hospitality does not provide legal counsel. The venue operator assumes full responsibility for ensuring deployment aligns with UK GDPR and employment laws.
+          </p>
+          <a 
+            href="/legal/compliance-framework" 
+            target="_blank" 
+            className="text-emerald-500 hover:text-emerald-400 underline font-medium"
+          >
+            Read the full Legal Standing & Deployment Guide
+          </a>
+        </section>
+
       </div>
     </div>
   );
