@@ -10,6 +10,7 @@ type InfractionEvent = { timestamp: string; staff: string };
 
 export default function CovertAuditPage() {
   const [isPanicked, setIsPanicked] = useState(false);
+  const [viewMode, setViewMode] = useState<"negative" | "positive">("negative");
   
   // Clear any old photo captures from a previous audit session when loading the dashboard
   useEffect(() => {
@@ -41,6 +42,20 @@ export default function CovertAuditPage() {
     eatingDrinking: [] as InfractionEvent[],
     underageStaff: [] as InfractionEvent[],
     noIdCheck: [] as InfractionEvent[],
+    // Positive
+    immediateRingIn: [] as InfractionEvent[],
+    consistentTillClosure: [] as InfractionEvent[],
+    accurateChangeVerifications: [] as InfractionEvent[],
+    immediateGreeting: [] as InfractionEvent[],
+    upselling: [] as InfractionEvent[],
+    efficiencyUnderPressure: [] as InfractionEvent[],
+    exactMeasurePouring: [] as InfractionEvent[],
+    activeSpillLogging: [] as InfractionEvent[],
+    perfectGlassware: [] as InfractionEvent[],
+    proactiveAgeVerification: [] as InfractionEvent[],
+    responsibleService: [] as InfractionEvent[],
+    cleanlinessMaintenance: [] as InfractionEvent[],
+    // Timers
     timeToGreetSecs: [] as { timestamp: string, duration: number, staff: string }[],
     timeToServeSecs: [] as { timestamp: string, duration: number, staff: string }[],
     photosTaken: 0,
@@ -61,7 +76,7 @@ export default function CovertAuditPage() {
     }
   };
 
-  const logInfraction = (key: keyof typeof metrics) => {
+  const addEvent = (key: keyof typeof metrics, label: string) => {
     if (key === 'photosTaken' || key === 'timeToGreetSecs' || key === 'timeToServeSecs') return;
     setMetrics(prev => ({
       ...prev,
@@ -122,6 +137,18 @@ export default function CovertAuditPage() {
         eatingDrinking: [],
         underageStaff: [],
         noIdCheck: [],
+        immediateRingIn: [],
+        consistentTillClosure: [],
+        accurateChangeVerifications: [],
+        immediateGreeting: [],
+        upselling: [],
+        efficiencyUnderPressure: [],
+        exactMeasurePouring: [],
+        activeSpillLogging: [],
+        perfectGlassware: [],
+        proactiveAgeVerification: [],
+        responsibleService: [],
+        cleanlinessMaintenance: [],
         timeToGreetSecs: [],
         timeToServeSecs: [],
         photosTaken: 0,
@@ -151,30 +178,61 @@ export default function CovertAuditPage() {
     doc.setFontSize(14);
     doc.text("Executive Summary", 14, 55);
 
-    const summaryData = [
-      ['Free Pouring', metrics.freePours.length],
-      ['Incorrect Measure Size', metrics.incorrectMeasures.length],
-      ['No Ring-In', metrics.noRingIns.length],
-      ['Over/Under-charge Discrepancy', metrics.chargeDiscrepancies.length],
+    // Negative Summary
+    const negativeSummaryData = [
+      ['Free Pours', metrics.freePours.length],
+      ['Incorrect Measures', metrics.incorrectMeasures.length],
+      ['No Ring Ins', metrics.noRingIns.length],
+      ['Charge Discrepancies', metrics.chargeDiscrepancies.length],
       ['Till Left Open', metrics.tillLeftOpen.length],
       ['Unrecorded Wastage', metrics.unrecordedWastage.length],
       ['Giving Away Drinks', metrics.givingAwayDrinks.length],
-      ['Dirty Glassware / Poor Hygiene', metrics.dirtyGlassware.length],
-      ['Using Phone on Shift', metrics.usingPhone.length],
-      ['Eating/Drinking Behind Bar', metrics.eatingDrinking.length],
-      ['Underaged Staff Serving', metrics.underageStaff.length],
+      ['Dirty Glassware', metrics.dirtyGlassware.length],
+      ['Using Phone', metrics.usingPhone.length],
+      ['Eating / Drinking', metrics.eatingDrinking.length],
+      ['Underage Staff', metrics.underageStaff.length],
       ['No ID Check', metrics.noIdCheck.length],
     ];
 
     autoTable(doc, {
       startY: 60,
-      head: [['Infraction Type', 'Total Incidents']],
-      body: summaryData.filter(row => (row[1] as number) > 0),
+      head: [['Negative Infractions', 'Total Incidents']],
+      body: negativeSummaryData.filter(row => (row[1] as number) > 0),
       theme: 'grid',
+      headStyles: { fillColor: [220, 38, 38] }, // Red header for negative
       margin: { bottom: 30 }
     });
 
     let finalY = (doc as any).lastAutoTable.finalY + 15;
+
+    // Positive Summary
+    const positiveSummaryData = [
+      ['Immediate Ring-In', metrics.immediateRingIn.length],
+      ['Consistent Till Closure', metrics.consistentTillClosure.length],
+      ['Accurate Change Verifications', metrics.accurateChangeVerifications.length],
+      ['Immediate Greeting', metrics.immediateGreeting.length],
+      ['Upselling', metrics.upselling.length],
+      ['Efficiency Under Pressure', metrics.efficiencyUnderPressure.length],
+      ['Exact Measure Pouring', metrics.exactMeasurePouring.length],
+      ['Active Spill Logging', metrics.activeSpillLogging.length],
+      ['Perfect Glassware', metrics.perfectGlassware.length],
+      ['Proactive Age Verification', metrics.proactiveAgeVerification.length],
+      ['Responsible Service', metrics.responsibleService.length],
+      ['Cleanliness Maintenance', metrics.cleanlinessMaintenance.length],
+    ];
+
+    const activePositive = positiveSummaryData.filter(row => (row[1] as number) > 0);
+    if (activePositive.length > 0) {
+      autoTable(doc, {
+        startY: finalY,
+        head: [['Positive Observations', 'Total Commendations']],
+        body: activePositive,
+        theme: 'grid',
+        headStyles: { fillColor: [16, 185, 129] }, // Green header for positive
+        margin: { bottom: 30 }
+      });
+      finalY = (doc as any).lastAutoTable.finalY + 15;
+    }
 
     // 3. Staff Breakdown
     if (staffList.length > 1) {
@@ -206,15 +264,16 @@ export default function CovertAuditPage() {
     }
 
     // 4. Chronological Event Log
-    const events: { type: string; time: Date, staff: string, detail?: string }[] = [];
+    const events: any[] = [];
     
-    const addEvents = (arr: InfractionEvent[], label: string) => {
-      arr.forEach(ev => events.push({ type: label, time: new Date(ev.timestamp), staff: ev.staff }));
+    // Add Negative
+    const addEvents = (arr: InfractionEvent[], type: string) => {
+      arr.forEach(e => events.push({ type, time: new Date(e.timestamp), staff: e.staff || "Unknown" }));
     };
 
     addEvents(metrics.freePours, 'Free Pour');
     addEvents(metrics.incorrectMeasures, 'Incorrect Measure');
-    addEvents(metrics.noRingIns, 'No Ring-In');
+    addEvents(metrics.noRingIns, 'No Ring In');
     addEvents(metrics.chargeDiscrepancies, 'Charge Discrepancy');
     addEvents(metrics.tillLeftOpen, 'Till Left Open');
     addEvents(metrics.unrecordedWastage, 'Unrecorded Wastage');
@@ -224,6 +283,20 @@ export default function CovertAuditPage() {
     addEvents(metrics.eatingDrinking, 'Eating/Drinking Behind Bar');
     addEvents(metrics.underageStaff, 'Underage Staff Serving');
     addEvents(metrics.noIdCheck, 'No ID Check');
+
+    // Add Positive
+    addEvents(metrics.immediateRingIn, '🌟 Immediate Ring-In');
+    addEvents(metrics.consistentTillClosure, '🔒 Consistent Till Closure');
+    addEvents(metrics.accurateChangeVerifications, '💷 Accurate Change Verifications');
+    addEvents(metrics.immediateGreeting, '👋 Immediate Greeting');
+    addEvents(metrics.upselling, '📈 Upselling / Upgrades');
+    addEvents(metrics.efficiencyUnderPressure, '⚡ Efficiency Under Pressure');
+    addEvents(metrics.exactMeasurePouring, '⚖️ Exact Measure Pouring');
+    addEvents(metrics.activeSpillLogging, '📝 Active Spill Logging');
+    addEvents(metrics.perfectGlassware, '🍷 Perfect Glassware');
+    addEvents(metrics.proactiveAgeVerification, '🆔 Proactive Age Verification');
+    addEvents(metrics.responsibleService, '🛑 Responsible Service');
+    addEvents(metrics.cleanlinessMaintenance, '✨ Cleanliness Maintenance');
 
     metrics.timeToGreetSecs.forEach(t => events.push({ type: 'Time to Greet', time: new Date(t.timestamp), staff: t.staff, detail: `${t.duration} seconds` }));
     metrics.timeToServeSecs.forEach(t => events.push({ type: 'Time to Serve', time: new Date(t.timestamp), staff: t.staff, detail: `${t.duration} seconds` }));
@@ -359,16 +432,20 @@ export default function CovertAuditPage() {
       metrics.freePours, metrics.incorrectMeasures, metrics.noRingIns, 
       metrics.chargeDiscrepancies, metrics.tillLeftOpen, metrics.unrecordedWastage, 
       metrics.givingAwayDrinks, metrics.dirtyGlassware, metrics.usingPhone, 
-      metrics.eatingDrinking, metrics.underageStaff, metrics.noIdCheck
+      metrics.eatingDrinking, metrics.underageStaff, metrics.noIdCheck,
+      metrics.immediateRingIn, metrics.consistentTillClosure, metrics.accurateChangeVerifications,
+      metrics.immediateGreeting, metrics.upselling, metrics.efficiencyUnderPressure,
+      metrics.exactMeasurePouring, metrics.activeSpillLogging, metrics.perfectGlassware,
+      metrics.proactiveAgeVerification, metrics.responsibleService, metrics.cleanlinessMaintenance
     ];
-    const totalInfractions = allMetrics.reduce((sum, arr) => sum + arr.length, 0);
+    const totalObservations = allMetrics.reduce((sum, arr) => sum + arr.length, 0);
 
     const body = encodeURIComponent(`CONFIDENTIAL TARGETED AUDIT REPORT
     
 Site Name: ${siteName || 'Not Specified'}
 Auditor: ${auditorName || 'Not Specified'}
 Date: ${new Date().toLocaleString('en-GB')}
-Total Infractions Logged: ${totalInfractions}
+Total Observations Logged: ${totalObservations}
 
 Please find the detailed PDF Executive Summary, Staff Breakdown, and Photographic Evidence attached to this email.
 
@@ -437,14 +514,6 @@ Generated via Whole Hospitality Covert Audit Utility`);
       </div>
     );
   }
-
-  const InfractionBtn = ({ id, label, icon }: { id: keyof typeof metrics, label: string, icon: string }) => (
-    <button onClick={() => logInfraction(id)} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all text-center">
-      <span className="text-2xl">{icon}</span>
-      <span className="font-semibold text-xs leading-tight">{label}</span>
-      <span className="text-[10px] text-slate-400">{(metrics[id] as any[]).length} logged</span>
-    </button>
-  );
 
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900 text-slate-100 font-sans p-4 pb-20">
@@ -552,21 +621,151 @@ Generated via Whole Hospitality Covert Audit Utility`);
 
         {/* Actions Grid */}
         <section>
-          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Log Infractions</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <InfractionBtn id="freePours" label="Free Pour" icon="🥃" />
-            <InfractionBtn id="incorrectMeasures" label="Wrong Measure" icon="⚖️" />
-            <InfractionBtn id="noRingIns" label="No Ring-In" icon="💷" />
-            <InfractionBtn id="chargeDiscrepancies" label="Charge Discrep" icon="📉" />
-            <InfractionBtn id="tillLeftOpen" label="Till Left Open" icon="🔓" />
-            <InfractionBtn id="unrecordedWastage" label="Unrecorded Waste" icon="🗑️" />
-            <InfractionBtn id="givingAwayDrinks" label="Gave Drink Away" icon="🎁" />
-            <InfractionBtn id="dirtyGlassware" label="Dirty Glassware" icon="🧼" />
-            <InfractionBtn id="usingPhone" label="Using Phone" icon="📱" />
-            <InfractionBtn id="eatingDrinking" label="Eating/Drinking" icon="🍔" />
-            <InfractionBtn id="underageStaff" label="Underage Staff" icon="👶" />
-            <InfractionBtn id="noIdCheck" label="No ID Check" icon="🆔" />
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Log Observations</h2>
+            <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+              <button 
+                onClick={() => setViewMode("negative")}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${viewMode === 'negative' ? 'bg-red-500/20 text-red-400' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Negative
+              </button>
+              <button 
+                onClick={() => setViewMode("positive")}
+                className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${viewMode === 'positive' ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                Positive
+              </button>
+            </div>
           </div>
+
+          {viewMode === "negative" ? (
+            <div className="grid grid-cols-3 gap-2">
+              <button onClick={() => addEvent('freePours', 'Free Pour')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">🥃</span>
+                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Free Pours</span>
+                <span className="text-[10px] text-red-400">{metrics.freePours.length}</span>
+              </button>
+              <button onClick={() => addEvent('incorrectMeasures', 'Incorrect Measure')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">⚖️</span>
+                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Incorrect Measure</span>
+                <span className="text-[10px] text-red-400">{metrics.incorrectMeasures.length}</span>
+              </button>
+              <button onClick={() => addEvent('noRingIns', 'No Ring In')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">🧾</span>
+                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">No Ring In</span>
+                <span className="text-[10px] text-red-400">{metrics.noRingIns.length}</span>
+              </button>
+              <button onClick={() => addEvent('chargeDiscrepancies', 'Charge Discrepancy')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">💷</span>
+                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Charge Discrepancy</span>
+                <span className="text-[10px] text-red-400">{metrics.chargeDiscrepancies.length}</span>
+              </button>
+              <button onClick={() => addEvent('tillLeftOpen', 'Till Left Open')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">🔓</span>
+                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Till Left Open</span>
+                <span className="text-[10px] text-red-400">{metrics.tillLeftOpen.length}</span>
+              </button>
+              <button onClick={() => addEvent('unrecordedWastage', 'Unrecorded Wastage')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">🗑️</span>
+                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Unrecorded Wastage</span>
+                <span className="text-[10px] text-red-400">{metrics.unrecordedWastage.length}</span>
+              </button>
+              <button onClick={() => addEvent('givingAwayDrinks', 'Giving Away Drinks')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">🍻</span>
+                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Giving Away Drinks</span>
+                <span className="text-[10px] text-red-400">{metrics.givingAwayDrinks.length}</span>
+              </button>
+              <button onClick={() => addEvent('dirtyGlassware', 'Dirty Glassware')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">🍷</span>
+                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Dirty Glassware</span>
+                <span className="text-[10px] text-red-400">{metrics.dirtyGlassware.length}</span>
+              </button>
+              <button onClick={() => addEvent('usingPhone', 'Using Phone')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">📱</span>
+                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Using Phone</span>
+                <span className="text-[10px] text-red-400">{metrics.usingPhone.length}</span>
+              </button>
+              <button onClick={() => addEvent('eatingDrinking', 'Eating / Drinking')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">🍔</span>
+                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Eating/Drinking</span>
+                <span className="text-[10px] text-red-400">{metrics.eatingDrinking.length}</span>
+              </button>
+              <button onClick={() => addEvent('underageStaff', 'Underage Staff')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">🔞</span>
+                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Underage Staff</span>
+                <span className="text-[10px] text-red-400">{metrics.underageStaff.length}</span>
+              </button>
+              <button onClick={() => addEvent('noIdCheck', 'No ID Check')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">🆔</span>
+                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">No ID Check</span>
+                <span className="text-[10px] text-red-400">{metrics.noIdCheck.length}</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              <button onClick={() => addEvent('immediateRingIn', 'Immediate Ring-In')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">🧾</span>
+                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Instant Ring-In</span>
+                <span className="text-[10px] text-emerald-400 font-bold">{metrics.immediateRingIn.length}</span>
+              </button>
+              <button onClick={() => addEvent('consistentTillClosure', 'Consistent Till Closure')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">🔒</span>
+                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Till Closure</span>
+                <span className="text-[10px] text-emerald-400 font-bold">{metrics.consistentTillClosure.length}</span>
+              </button>
+              <button onClick={() => addEvent('accurateChangeVerifications', 'Accurate Change Verifications')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">💷</span>
+                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Accurate Change</span>
+                <span className="text-[10px] text-emerald-400 font-bold">{metrics.accurateChangeVerifications.length}</span>
+              </button>
+              <button onClick={() => addEvent('immediateGreeting', 'Immediate Greeting')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">👋</span>
+                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Instant Greet</span>
+                <span className="text-[10px] text-emerald-400 font-bold">{metrics.immediateGreeting.length}</span>
+              </button>
+              <button onClick={() => addEvent('upselling', 'Upselling')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">📈</span>
+                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Upselling</span>
+                <span className="text-[10px] text-emerald-400 font-bold">{metrics.upselling.length}</span>
+              </button>
+              <button onClick={() => addEvent('efficiencyUnderPressure', 'Efficiency Under Pressure')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">⚡</span>
+                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Pressure Eff.</span>
+                <span className="text-[10px] text-emerald-400 font-bold">{metrics.efficiencyUnderPressure.length}</span>
+              </button>
+              <button onClick={() => addEvent('exactMeasurePouring', 'Exact Measure Pouring')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">⚖️</span>
+                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Exact Measures</span>
+                <span className="text-[10px] text-emerald-400 font-bold">{metrics.exactMeasurePouring.length}</span>
+              </button>
+              <button onClick={() => addEvent('activeSpillLogging', 'Active Spill Logging')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">📝</span>
+                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Spill Logging</span>
+                <span className="text-[10px] text-emerald-400 font-bold">{metrics.activeSpillLogging.length}</span>
+              </button>
+              <button onClick={() => addEvent('perfectGlassware', 'Perfect Glassware')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">🍷</span>
+                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Perfect Glass</span>
+                <span className="text-[10px] text-emerald-400 font-bold">{metrics.perfectGlassware.length}</span>
+              </button>
+              <button onClick={() => addEvent('proactiveAgeVerification', 'Proactive Age Verification')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">🆔</span>
+                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Age Verify</span>
+                <span className="text-[10px] text-emerald-400 font-bold">{metrics.proactiveAgeVerification.length}</span>
+              </button>
+              <button onClick={() => addEvent('responsibleService', 'Responsible Service')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">🛑</span>
+                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Resp. Service</span>
+                <span className="text-[10px] text-emerald-400 font-bold">{metrics.responsibleService.length}</span>
+              </button>
+              <button onClick={() => addEvent('cleanlinessMaintenance', 'Cleanliness Maintenance')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                <span className="text-xl">✨</span>
+                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Cleanliness</span>
+                <span className="text-[10px] text-emerald-400 font-bold">{metrics.cleanlinessMaintenance.length}</span>
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Timers */}
