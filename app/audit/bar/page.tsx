@@ -113,7 +113,7 @@ export default function CovertAuditPage() {
     autoTable(doc, {
       startY: 60,
       head: [['Infraction Type', 'Total Incidents']],
-      body: summaryData.filter(row => row[1] > 0), // Only show infractions that happened
+      body: summaryData.filter(row => (row[1] as number) > 0), // Only show infractions that happened
       theme: 'grid',
     });
 
