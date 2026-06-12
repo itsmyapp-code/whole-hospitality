@@ -144,7 +144,7 @@ export default function CovertAuditPage() {
     doc.setFontSize(11);
     doc.text(`Site Name: ${siteName || "Not Specified"}`, 14, 30);
     doc.text(`Auditor: ${auditorName || "Not Specified"}`, 14, 36);
-    doc.text(`Date of Export: ${new Date().toLocaleString()}`, 14, 42);
+    doc.text(`Date of Export: ${new Date().toLocaleString('en-GB')}`, 14, 42);
 
     // 2. Executive Summary
     doc.setFontSize(14);
@@ -234,7 +234,7 @@ export default function CovertAuditPage() {
     doc.text("Chronological Event Log", 14, finalY);
 
     const logBody = events.map(e => [
-      e.time.toLocaleTimeString([], { hour12: false }),
+      e.time.toLocaleTimeString('en-GB', { hour12: false }),
       e.staff,
       e.type,
       e.detail || "-"
@@ -270,7 +270,7 @@ export default function CovertAuditPage() {
             yPos = 20;
           }
           doc.setFontSize(10);
-          doc.text(`Evidence #${index + 1} - Captured: ${cap.timestamp}`, 14, yPos);
+          doc.text(`Evidence #${index + 1} - Captured: ${new Date(cap.timestamp).toLocaleString('en-GB')}`, 14, yPos);
           
           doc.addImage(cap.dataUrl, 'JPEG', 14, yPos + 5, 120, 90);
           yPos += 105;
@@ -284,7 +284,7 @@ export default function CovertAuditPage() {
     const pageCount = (doc as any).internal.getNumberOfPages();
     const pageWidth = (doc as any).internal.pageSize.getWidth();
     const pageHeight = (doc as any).internal.pageSize.getHeight();
-    const exportTimestamp = new Date().toLocaleString();
+    const exportTimestamp = new Date().toLocaleString('en-GB');
 
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
