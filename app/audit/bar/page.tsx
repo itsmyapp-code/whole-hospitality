@@ -101,6 +101,38 @@ export default function CovertAuditPage() {
     }
   };
 
+  const startNewAudit = () => {
+    if (window.confirm("Are you sure you want to completely wipe all data and start a new audit?")) {
+      setSiteName("");
+      setAuditorName("");
+      setStaffList(["General / Unknown"]);
+      setActiveStaff("General / Unknown");
+      setNewStaffInput("");
+      setMetrics({
+        freePours: [],
+        incorrectMeasures: [],
+        noRingIns: [],
+        chargeDiscrepancies: [],
+        tillLeftOpen: [],
+        unrecordedWastage: [],
+        givingAwayDrinks: [],
+        dirtyGlassware: [],
+        usingPhone: [],
+        eatingDrinking: [],
+        underageStaff: [],
+        noIdCheck: [],
+        timeToGreetSecs: [],
+        timeToServeSecs: [],
+        photosTaken: 0,
+      });
+      setGreetTimerStart(null);
+      setServeTimerStart(null);
+      try {
+        localStorage.removeItem('audit_captures');
+      } catch (e) {}
+    }
+  };
+
   // PDF Export Logic
   const exportPDF = () => {
     const doc = new jsPDF();
@@ -462,12 +494,19 @@ export default function CovertAuditPage() {
         </section>
 
         {/* Export */}
-        <section className="pt-4">
+        <section className="pt-4 pb-8 space-y-4">
           <button 
             onClick={exportPDF}
             className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-lg shadow-lg text-lg uppercase tracking-wider transition-colors"
           >
             End Audit & Export PDF
+          </button>
+
+          <button 
+            onClick={startNewAudit}
+            className="w-full bg-slate-800 hover:bg-red-900/50 text-slate-400 hover:text-red-400 border border-slate-700 hover:border-red-800 py-3 rounded-lg font-bold text-sm uppercase tracking-wider transition-colors"
+          >
+            Start New Audit (Wipe Data)
           </button>
         </section>
 
