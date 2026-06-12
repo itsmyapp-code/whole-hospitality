@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import BarStealthCamera, { BarStealthCameraRef } from "./BarStealthCamera";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -18,6 +18,14 @@ export default function CovertAuditPage() {
     incorrectMeasures: [] as string[],
     noRingIns: [] as string[],
     chargeDiscrepancies: [] as string[],
+    tillLeftOpen: [] as string[],
+    unrecordedWastage: [] as string[],
+    givingAwayDrinks: [] as string[],
+    dirtyGlassware: [] as string[],
+    usingPhone: [] as string[],
+    eatingDrinking: [] as string[],
+    underageStaff: [] as string[],
+    noIdCheck: [] as string[],
     timeToGreetSecs: [] as { timestamp: string, duration: number }[],
     timeToServeSecs: [] as { timestamp: string, duration: number }[],
     photosTaken: 0,
@@ -29,21 +37,12 @@ export default function CovertAuditPage() {
 
   const cameraRef = useRef<BarStealthCameraRef>(null);
 
-  // Triggers
-  const logFreePour = () => {
-    setMetrics(prev => ({ ...prev, freePours: [...prev.freePours, new Date().toISOString()] }));
-  };
-
-  const logIncorrectMeasure = () => {
-    setMetrics(prev => ({ ...prev, incorrectMeasures: [...prev.incorrectMeasures, new Date().toISOString()] }));
-  };
-
-  const logNoRingIn = () => {
-    setMetrics(prev => ({ ...prev, noRingIns: [...prev.noRingIns, new Date().toISOString()] }));
-  };
-
-  const logChargeDiscrepancy = () => {
-    setMetrics(prev => ({ ...prev, chargeDiscrepancies: [...prev.chargeDiscrepancies, new Date().toISOString()] }));
+  const logInfraction = (key: keyof typeof metrics) => {
+    if (key === 'photosTaken' || key === 'timeToGreetSecs' || key === 'timeToServeSecs') return;
+    setMetrics(prev => ({
+      ...prev,
+      [key]: [...(prev[key] as string[]), new Date().toISOString()]
+    }));
   };
 
   const toggleGreetTimer = () => {
@@ -82,7 +81,6 @@ export default function CovertAuditPage() {
   // PDF Export Logic
   const exportPDF = () => {
     const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
 
     // 1. Header
     doc.setFontSize(18);
@@ -97,24 +95,48 @@ export default function CovertAuditPage() {
     doc.setFontSize(14);
     doc.text("Executive Summary", 14, 55);
 
+    const summaryData = [
+      ['Free Pouring', metrics.freePours.length],
+      ['Incorrect Measure Size', metrics.incorrectMeasures.length],
+      ['No Ring-In', metrics.noRingIns.length],
+      ['Over/Under-charge Discrepancy', metrics.chargeDiscrepancies.length],
+      ['Till Left Open', metrics.tillLeftOpen.length],
+      ['Unrecorded Wastage', metrics.unrecordedWastage.length],
+      ['Giving Away Drinks', metrics.givingAwayDrinks.length],
+      ['Dirty Glassware / Poor Hygiene', metrics.dirtyGlassware.length],
+      ['Using Phone on Shift', metrics.usingPhone.length],
+      ['Eating/Drinking Behind Bar', metrics.eatingDrinking.length],
+      ['Underaged Staff Serving', metrics.underageStaff.length],
+      ['No ID Check', metrics.noIdCheck.length],
+    ];
+
     autoTable(doc, {
       startY: 60,
       head: [['Infraction Type', 'Total Incidents']],
-      body: [
-        ['Free Pouring', metrics.freePours.length],
-        ['Incorrect Measure Size', metrics.incorrectMeasures.length],
-        ['No Ring-In', metrics.noRingIns.length],
-        ['Over/Under-charge Discrepancy', metrics.chargeDiscrepancies.length],
-      ],
+      body: summaryData.filter(row => row[1] > 0), // Only show infractions that happened
       theme: 'grid',
     });
 
     // 3. Chronological Event Log
     const events: { type: string; time: Date, detail?: string }[] = [];
-    metrics.freePours.forEach(ts => events.push({ type: 'Free Pour', time: new Date(ts) }));
-    metrics.incorrectMeasures.forEach(ts => events.push({ type: 'Incorrect Measure', time: new Date(ts) }));
-    metrics.noRingIns.forEach(ts => events.push({ type: 'No Ring-In', time: new Date(ts) }));
-    metrics.chargeDiscrepancies.forEach(ts => events.push({ type: 'Charge Discrepancy', time: new Date(ts) }));
+    
+    const addEvents = (arr: string[], label: string) => {
+      arr.forEach(ts => events.push({ type: label, time: new Date(ts) }));
+    };
+
+    addEvents(metrics.freePours, 'Free Pour');
+    addEvents(metrics.incorrectMeasures, 'Incorrect Measure');
+    addEvents(metrics.noRingIns, 'No Ring-In');
+    addEvents(metrics.chargeDiscrepancies, 'Charge Discrepancy');
+    addEvents(metrics.tillLeftOpen, 'Till Left Open');
+    addEvents(metrics.unrecordedWastage, 'Unrecorded Wastage');
+    addEvents(metrics.givingAwayDrinks, 'Giving Away Drinks');
+    addEvents(metrics.dirtyGlassware, 'Dirty Glassware');
+    addEvents(metrics.usingPhone, 'Using Phone on Shift');
+    addEvents(metrics.eatingDrinking, 'Eating/Drinking Behind Bar');
+    addEvents(metrics.underageStaff, 'Underage Staff Serving');
+    addEvents(metrics.noIdCheck, 'No ID Check');
+
     metrics.timeToGreetSecs.forEach(t => events.push({ type: 'Time to Greet', time: new Date(t.timestamp), detail: `${t.duration} seconds` }));
     metrics.timeToServeSecs.forEach(t => events.push({ type: 'Time to Serve', time: new Date(t.timestamp), detail: `${t.duration} seconds` }));
 
@@ -177,27 +199,67 @@ export default function CovertAuditPage() {
 
   if (isPanicked) {
     return (
-      <div className="min-h-screen bg-white text-black p-4 font-sans" onClick={() => setIsPanicked(false)}>
-        <header className="border-b pb-2 mb-4">
-          <h1 className="text-xl font-bold">Local Weather & Transit</h1>
-          <p className="text-sm text-gray-500">Updated: Just now</p>
-        </header>
-        <main className="space-y-4">
-          <section>
-            <h2 className="font-semibold mb-2">Today's Forecast</h2>
-            <p>Cloudy with a chance of scattered showers in the afternoon. Highs of 14°C.</p>
-          </section>
-          <section>
-            <h2 className="font-semibold mb-2">Bus Schedule Update</h2>
-            <p>The 42A service is running approximately 5 minutes late due to roadworks on Main Street.</p>
-          </section>
-        </main>
-        <div className="mt-12 text-xs text-center text-gray-200">
-          (Tap anywhere to un-hide)
+      <div 
+        className="fixed inset-0 z-[99999] bg-white flex flex-col"
+        onClick={() => setIsPanicked(false)}
+      >
+        {/* Fake Google Header */}
+        <div className="flex justify-between items-center p-4">
+          <div className="flex gap-4">
+            <span className="text-sm hover:underline cursor-pointer">About</span>
+            <span className="text-sm hover:underline cursor-pointer">Store</span>
+          </div>
+          <div className="flex gap-4 items-center">
+            <span className="text-sm hover:underline cursor-pointer">Gmail</span>
+            <span className="text-sm hover:underline cursor-pointer">Images</span>
+            <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">M</div>
+          </div>
+        </div>
+
+        {/* Fake Google Main Body */}
+        <div className="flex-1 flex flex-col items-center justify-center -mt-20">
+          <div className="text-8xl font-sans font-medium mb-8 flex tracking-tighter">
+            <span className="text-[#4285F4]">G</span>
+            <span className="text-[#EA4335]">o</span>
+            <span className="text-[#FBBC05]">o</span>
+            <span className="text-[#4285F4]">g</span>
+            <span className="text-[#34A853]">l</span>
+            <span className="text-[#EA4335]">e</span>
+          </div>
+          
+          <div className="w-full max-w-[584px] px-4">
+            <div className="flex items-center w-full h-12 rounded-full border border-gray-200 hover:shadow-md px-4">
+              <svg focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 text-gray-400">
+                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"></path>
+              </svg>
+              <input type="text" className="flex-1 h-full outline-none px-4" />
+            </div>
+            
+            <div className="flex justify-center gap-3 mt-6">
+              <button className="bg-[#f8f9fa] border border-[#f8f9fa] hover:border-[#dadce0] hover:shadow text-sm text-[#3c4043] h-9 px-4 rounded">
+                Google Search
+              </button>
+              <button className="bg-[#f8f9fa] border border-[#f8f9fa] hover:border-[#dadce0] hover:shadow text-sm text-[#3c4043] h-9 px-4 rounded">
+                I'm Feeling Lucky
+              </button>
+            </div>
+          </div>
+          
+          <div className="mt-8 text-sm">
+            Google offered in: <span className="text-[#1a0dab] hover:underline cursor-pointer">Français</span>
+          </div>
         </div>
       </div>
     );
   }
+
+  const InfractionBtn = ({ id, label, icon }: { id: keyof typeof metrics, label: string, icon: string }) => (
+    <button onClick={() => logInfraction(id)} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all text-center">
+      <span className="text-2xl">{icon}</span>
+      <span className="font-semibold text-xs leading-tight">{label}</span>
+      <span className="text-[10px] text-slate-400">{(metrics[id] as any[]).length} logged</span>
+    </button>
+  );
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans p-4 pb-20">
@@ -245,27 +307,19 @@ export default function CovertAuditPage() {
         {/* Actions Grid */}
         <section>
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Log Infractions</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={logFreePour} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all text-center">
-              <span className="text-2xl">🥃</span>
-              <span className="font-semibold text-sm">Free Pour</span>
-              <span className="text-xs text-slate-400">{metrics.freePours.length} logged</span>
-            </button>
-            <button onClick={logIncorrectMeasure} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all text-center">
-              <span className="text-2xl">⚖️</span>
-              <span className="font-semibold text-sm">Wrong Measure</span>
-              <span className="text-xs text-slate-400">{metrics.incorrectMeasures.length} logged</span>
-            </button>
-            <button onClick={logNoRingIn} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all text-center">
-              <span className="text-2xl">💷</span>
-              <span className="font-semibold text-sm">No Ring-In</span>
-              <span className="text-xs text-slate-400">{metrics.noRingIns.length} logged</span>
-            </button>
-            <button onClick={logChargeDiscrepancy} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all text-center">
-              <span className="text-2xl">📉</span>
-              <span className="font-semibold text-sm">Over/Under Charge</span>
-              <span className="text-xs text-slate-400">{metrics.chargeDiscrepancies.length} logged</span>
-            </button>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <InfractionBtn id="freePours" label="Free Pour" icon="🥃" />
+            <InfractionBtn id="incorrectMeasures" label="Wrong Measure" icon="⚖️" />
+            <InfractionBtn id="noRingIns" label="No Ring-In" icon="💷" />
+            <InfractionBtn id="chargeDiscrepancies" label="Charge Discrep" icon="📉" />
+            <InfractionBtn id="tillLeftOpen" label="Till Left Open" icon="🔓" />
+            <InfractionBtn id="unrecordedWastage" label="Unrecorded Waste" icon="🗑️" />
+            <InfractionBtn id="givingAwayDrinks" label="Gave Drink Away" icon="🎁" />
+            <InfractionBtn id="dirtyGlassware" label="Dirty Glassware" icon="🧼" />
+            <InfractionBtn id="usingPhone" label="Using Phone" icon="📱" />
+            <InfractionBtn id="eatingDrinking" label="Eating/Drinking" icon="🍔" />
+            <InfractionBtn id="underageStaff" label="Underage Staff" icon="👶" />
+            <InfractionBtn id="noIdCheck" label="No ID Check" icon="🆔" />
           </div>
         </section>
 
@@ -305,7 +359,6 @@ export default function CovertAuditPage() {
         <section>
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Evidence</h2>
           <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center gap-4">
-            {/* Hidden camera preview */}
             <div className="hidden">
               <BarStealthCamera ref={cameraRef} />
             </div>
