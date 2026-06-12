@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import BarStealthCamera, { BarStealthCameraRef } from "./BarStealthCamera";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -10,6 +10,13 @@ type InfractionEvent = { timestamp: string; staff: string };
 export default function CovertAuditPage() {
   const [isPanicked, setIsPanicked] = useState(false);
   
+  // Clear any old photo captures from a previous audit session when loading the dashboard
+  useEffect(() => {
+    try {
+      localStorage.removeItem('audit_captures');
+    } catch (e) {}
+  }, []);
+
   // Auditor Info State
   const [siteName, setSiteName] = useState("");
   const [auditorName, setAuditorName] = useState("");
