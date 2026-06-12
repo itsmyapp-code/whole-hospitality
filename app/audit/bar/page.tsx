@@ -306,7 +306,7 @@ export default function CovertAuditPage() {
 
     autoTable(doc, {
       startY: 30,
-      body: complianceData,
+      body: complianceData as any,
       theme: 'plain',
       styles: { fontSize: 10, cellPadding: 2, textColor: [50, 50, 50] },
       columnStyles: { 0: { cellWidth: 'auto' } },
