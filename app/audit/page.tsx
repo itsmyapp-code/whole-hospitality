@@ -359,6 +359,25 @@ export default function AuditHub() {
                   </div>
                 </section>
 
+                {/* OVERT HOTEL METRICS */}
+                <section>
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 border-b border-slate-800 pb-2">
+                    <span className="text-2xl">📋</span> Overt Hotel Checklist
+                  </h3>
+                  <div className="grid grid-cols-1 gap-6">
+                    <div>
+                      <p className="text-slate-300 mb-3">
+                        Unlike the covert modules, this is an announced, structured audit designed for a comprehensive walkthrough of the premises.
+                      </p>
+                      <ul className="list-disc pl-5 space-y-2 text-slate-300">
+                        <li><strong>Pass / Fail / N/A System:</strong> Every metric must be explicitly graded. Marking an item as Fail highlights it in red on the final PDF.</li>
+                        <li><strong>Mandatory Statutory Compliance:</strong> Section 5 contains critical safety and legal checks (Fire Safety, Food Hygiene, etc.). If any item in Section 5 is marked as Fail or left blank, the final PDF report will automatically generate a severe non-compliance alert on the cover page.</li>
+                        <li><strong>Photographic Evidence:</strong> You can use the camera feed at the bottom of the page to snap pictures. Because this is an overt audit, the camera viewfinder is fully visible.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </section>
+
               </div>
             </div>
           </div>
