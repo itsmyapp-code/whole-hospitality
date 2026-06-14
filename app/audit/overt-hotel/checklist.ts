@@ -21,7 +21,7 @@ export const OVERT_HOTEL_CHECKLIST: ChecklistSection[] = [
     title: "SECTION 1: FRONT DESK & PUBLIC AREAS (Hospitality & Service)",
     subsections: [
       {
-        title: "1.1 Arrival & Hospitality (AA Pillars 2 & 3)",
+        title: "1.1 Arrival & Hospitality",
         items: [
           { id: "1_1_1", label: "First Impression", description: "Staff display a warm, unprompted smile and immediate eye contact within 10 seconds of a guest crossing the threshold." },
           { id: "1_1_2", label: "Tone of Voice", description: "Staff conversation is natural, welcoming, and genuinely helpful rather than stiff, transactional, or robotic." },
@@ -137,7 +137,7 @@ export const OVERT_HOTEL_CHECKLIST: ChecklistSection[] = [
         title: "4.1 Dining Presentation & Service Execution",
         items: [
           { id: "4_1_1", label: "Table Settings", description: "Restaurant tables feature immaculate linens or pristine, unmarred tabletops; cutlery is polished to a mirror finish, and glassware is completely clear of water spots." },
-          { id: "4_1_2", label: "Local Sourcing Validation", description: "Menu descriptions of premium local produce are cross-referenced with live kitchen delivery invoices to maintain AA Rosette credentials." },
+          { id: "4_1_2", label: "Local Sourcing Validation", description: "Menu descriptions of premium local produce are cross-referenced with live kitchen delivery invoices to maintain quality credentials." },
           { id: "4_1_3", label: "Service Temperature Control", description: "High-quality plates are physically warmed in a hot-cupboard prior to hot food plating; cold dishes are served on chilled crockery." },
           { id: "4_1_4", label: "Culinary Execution Spot-Check", description: "Breakfast and evening dishes match exact design specifications (e.g., breakfast poached eggs feature firm whites with liquid, running yolks; steaks match requested temperatures precisely)." },
           { id: "4_1_5", label: "Floor Clearance Speed", description: "Floor observations confirm that empty glassware and finished dining plates are cleared from guest tables within 3 minutes of consumption." }
