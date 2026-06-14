@@ -80,6 +80,83 @@ export default function AuditHub() {
     }
   };
 
+  const downloadDPIA = () => {
+    const htmlContent = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head><meta charset='utf-8'><title>DPIA Template</title></head>
+      <body style="font-family: Arial, sans-serif; font-size: 11pt;">
+        <h1 style="color: #333;">Data Protection Impact Assessment (DPIA)</h1>
+        <h2 style="color: #555;">Template for Covert Workplace Monitoring (Hospitality Sector)</h2>
+        <p><strong>Disclaimer:</strong> This is a draft template provided by Whole Hospitality for venue operators. It is not legal advice. Under the UK Data Protection Act 2018, UK GDPR, and the Data (Use and Access) Act 2025 (DUAA), the venue operator is the Data Controller. You must adapt this document to your specific circumstances and keep it securely on file <strong>before</strong> commencing any covert monitoring.</p>
+        <hr>
+        <h3>1. Project Overview</h3>
+        <p><strong>Venue Name:</strong> [Insert Venue Name]<br>
+        <strong>Date of Assessment:</strong> [Insert Date]<br>
+        <strong>Assessor Name & Position:</strong> [Insert Name, e.g., General Manager / Owner]<br>
+        <strong>Target of Monitoring:</strong> [e.g., Main Bar Area / Front Desk]</p>
+        
+        <h3>2. Identify the Need for a DPIA</h3>
+        <p><strong>Why is a DPIA required?</strong><br>
+        We intend to conduct short-term, targeted, and covert visual/behavioral monitoring of employees operating in the public trading areas of the venue. Under ICO guidelines, covert monitoring is highly intrusive and inherently high-risk, making a DPIA a strict legal requirement prior to deployment.</p>
+
+        <h3>3. Describe the Processing</h3>
+        <p><strong>Nature of the Processing:</strong><br>
+        We will use an offline, local-device tool (Whole Hospitality Covert Audit) to log positive and negative staff behaviors, and optionally capture covert still photographs of policy infractions.</p>
+        <p><strong>Scope of the Processing:</strong></p>
+        <ul>
+          <li><strong>Duration:</strong> The monitoring is strictly time-limited to a "Proportionality Window" of [Insert duration, e.g., 7 Days / 4 specific shifts]. It is not continuous.</li>
+          <li><strong>Data Captured:</strong> Staff names/roles, timestamped logs of specific actions (e.g., cash handling, drink pouring), and potentially still images of the public trading floor.</li>
+          <li><strong>Exclusions:</strong> Monitoring will <strong>never</strong> occur in private zones (bathrooms, break rooms, changing areas). Audio recording is <strong>not</strong> utilized.</li>
+        </ul>
+        <p><strong>Context of the Processing:</strong><br>
+        The monitoring occurs exclusively on the public trading floor where employees have a naturally reduced expectation of privacy compared to private back-of-house areas.</p>
+        <p><strong>Purpose of the Processing:</strong><br>
+        To secure "smoking gun" evidence of suspected financial leakage, gross operational malpractice, or internal theft that threatens the viability of the business.</p>
+
+        <h3>4. Necessity and Proportionality</h3>
+        <p><strong>Lawful Basis:</strong> Legitimate Interests, specifically relying on the DUAA 2025 framework for crime detection and business safeguarding.</p>
+        <p><strong>Why is covert monitoring necessary?</strong><br>
+        We have a documented, reasonable suspicion of [Describe suspicion, e.g., cash theft from the main till / unauthorized free drinks being distributed].</p>
+        <p><strong>Why have alternative, less intrusive methods failed?</strong><br>
+        We have already attempted [e.g., standard inventory checks, overt CCTV review, management floor presence], but these methods have failed to identify the specific individuals responsible or capture usable disciplinary evidence. If staff are aware they are being audited (overt monitoring), the illicit behavior ceases temporarily, only to resume later. Therefore, covert monitoring is the only viable method to establish the facts.</p>
+
+        <h3>5. Consultation Process</h3>
+        <p><strong>Will you consult staff?</strong><br>
+        No. Informing the staff of the monitoring would entirely defeat the purpose of the investigation and prevent the capture of evidence related to the suspected gross misconduct.</p>
+
+        <h3>6. Identifying & Mitigating Risks</h3>
+        <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+          <tr style="background-color: #f2f2f2;"><th>Privacy Risk</th><th>Mitigation Measure</th><th>Residual Risk</th></tr>
+          <tr><td><strong>Intrusion of Privacy</strong></td><td>Monitoring is strictly confined to public areas and strictly time-limited (e.g., 1-2 weeks). No private zones are monitored.</td><td>Low</td></tr>
+          <tr><td><strong>Data Leak / Hacking</strong></td><td>The Whole Hospitality tool utilizes a Zero-Server Architecture. Data never touches the cloud. All logs and images are stored locally on the auditor's device and immediately purged upon starting a new session.</td><td>Low</td></tr>
+          <tr><td><strong>Unauthorized Access</strong></td><td>The resulting PDF report will be treated as highly confidential HR evidence. It will be stored securely on an encrypted local drive accessible only by senior management.</td><td>Low</td></tr>
+          <tr><td><strong>Scope Creep</strong></td><td>Management commits to immediately ceasing the covert audit the moment sufficient evidence is gathered to initiate formal disciplinary hearings.</td><td>Low</td></tr>
+          <tr><td><strong>Automated Decision-Making (ADM)</strong></td><td><strong>Misinterpretation of software outputs leading to automated unfair discipline:</strong> The Whole Hospitality tool serves strictly as a logging utility. Senior management will manually review all findings, conduct formal interviews, and provide full human intervention before any disciplinary action is taken. No automated decisions are made.</td><td>Low</td></tr>
+          <tr><td><strong>Complaints Processing</strong></td><td><strong>Failure to process employee data protection complaints under the new DUAA internal complaints regime:</strong> The Data Controller confirms that a compliant internal data protection complaints log and submission process is active, as required by the DUAA, should an affected data subject file a formal complaint regarding this processing.</td><td>Low</td></tr>
+        </table>
+
+        <h3>7. Sign-Off and Record of Outcomes</h3>
+        <p><strong>Is the covert monitoring justified, proportionate, and lawful?</strong><br>
+        [ ] <strong>Yes.</strong> The risk to the business survival outweighs the temporary intrusion into employee privacy in a public trading space, provided the mitigations above are strictly enforced.</p>
+        <p>[ ] Management commits to reviewing this DPIA template annually against updated ICO Employment Monitoring codes published post-DUAA implementation.</p>
+        <p><br><strong>Signed (Data Controller / Management):</strong> ___________________________<br><br>
+        <strong>Date:</strong> ___________________________</p>
+        <hr>
+        <p><em>Keep this document securely on file. Do not share with general staff. It serves as your legal justification should the ICO or an Employment Tribunal question the lawfulness of your evidence.</em></p>
+      </body>
+      </html>
+    `;
+    const blob = new Blob([htmlContent], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'DPIA_Template_Covert_Monitoring.doc';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
@@ -181,6 +258,19 @@ export default function AuditHub() {
                 <span className="text-2xl mb-2">🔜</span>
                 <span className="text-xs text-slate-500 font-semibold text-center">Restaurant Checklist<br/>(Coming Soon)</span>
               </div>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2">Legal & Compliance Resources</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button 
+                onClick={downloadDPIA}
+                className="group bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
+              >
+                <span className="text-4xl group-hover:scale-110 transition-transform">⚖️</span>
+                <span className="font-semibold text-slate-300 text-center">DPIA Template<br/><span className="text-xs text-slate-500 font-normal">(Download Word Document)</span></span>
+              </button>
             </div>
           </section>
         </div>
