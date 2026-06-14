@@ -154,16 +154,35 @@ export const generateOvertHotelPDF = async (data: {
   
   // 4. Footer on all pages
   const pageCount = (doc as any).internal.getNumberOfPages();
-  doc.setFontSize(8);
-  doc.setTextColor(150);
+  const pageHeight = (doc as any).internal.pageSize.getHeight();
+  const exportTimestamp = new Date().toLocaleString('en-GB');
+
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    doc.text(
-      `Whole Hospitality Announced Audit - Page ${i} of ${pageCount}`,
-      pageWidth / 2,
-      doc.internal.pageSize.getHeight() - 10,
-      { align: "center" }
-    );
+    
+    // Separator Line
+    doc.setDrawColor(100, 116, 139);
+    doc.setLineWidth(0.5);
+    doc.line(14, pageHeight - 25, pageWidth - 14, pageHeight - 25);
+    
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139); 
+    
+    // Column Left
+    doc.text("CONFIDENTIAL", 14, pageHeight - 19);
+    doc.text("Targeted Announced Audit", 14, pageHeight - 15);
+    doc.text(`Page ${i} of ${pageCount}`, 14, pageHeight - 11);
+    doc.text("wholehospitality.co.uk", 14, pageHeight - 7);
+    
+    // Column Center
+    const centerText = "Local Device Export - Zero-Server Architecture";
+    const textWidth = doc.getTextWidth(centerText);
+    doc.text(centerText, (pageWidth - textWidth) / 2, pageHeight - 19);
+    
+    // Column Right
+    doc.text("Data Controller Local Device Export:", pageWidth - 14, pageHeight - 19, { align: "right" });
+    doc.text(`[${exportTimestamp}]`, pageWidth - 14, pageHeight - 15, { align: "right" });
+    doc.text("© 2026 Whole Hospitality. All Rights Reserved.", pageWidth - 14, pageHeight - 7, { align: "right" });
   }
   
   // Output
