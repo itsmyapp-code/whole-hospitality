@@ -132,38 +132,57 @@ export default function AuditHub() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button 
-            onClick={() => handleModuleSelect('/audit/bar')}
-            className="group bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
-          >
-            <span className="text-4xl group-hover:scale-110 transition-transform">🥃</span>
-            <span className="font-semibold text-slate-300">Bar Premises</span>
-          </button>
-          
-          <button 
-            onClick={() => handleModuleSelect('/audit/restaurant')}
-            className="group bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
-          >
-            <span className="text-4xl group-hover:scale-110 transition-transform">🍽️</span>
-            <span className="font-semibold text-slate-300 text-center">Restaurant &<br/>Floor</span>
-          </button>
+        <div className="space-y-6">
+          <section>
+            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2">Covert Audits (Stealth Mode)</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button 
+                onClick={() => handleModuleSelect('/audit/bar')}
+                className="group bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
+              >
+                <span className="text-4xl group-hover:scale-110 transition-transform">🥃</span>
+                <span className="font-semibold text-slate-300">Bar Premises</span>
+              </button>
+              
+              <button 
+                onClick={() => handleModuleSelect('/audit/restaurant')}
+                className="group bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
+              >
+                <span className="text-4xl group-hover:scale-110 transition-transform">🍽️</span>
+                <span className="font-semibold text-slate-300 text-center">Restaurant &<br/>Floor</span>
+              </button>
 
-          <button 
-            onClick={() => handleModuleSelect('/audit/hotel')}
-            className="group bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
-          >
-            <span className="text-4xl group-hover:scale-110 transition-transform">🏨</span>
-            <span className="font-semibold text-slate-300 text-center">Hotel & Guest<br/>Services</span>
-          </button>
+              <button 
+                onClick={() => handleModuleSelect('/audit/hotel')}
+                className="group bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
+              >
+                <span className="text-4xl group-hover:scale-110 transition-transform">🏨</span>
+                <span className="font-semibold text-slate-300 text-center">Hotel & Guest<br/>Services</span>
+              </button>
+            </div>
+          </section>
 
-          <button 
-            onClick={() => handleModuleSelect('/audit/overt-hotel')}
-            className="group bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
-          >
-            <span className="text-4xl group-hover:scale-110 transition-transform">📋</span>
-            <span className="font-semibold text-slate-300 text-center">Overt Hotel<br/>Checklist</span>
-          </button>
+          <section>
+            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2">Overt Audits (Announced)</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button 
+                onClick={() => handleModuleSelect('/audit/overt-hotel')}
+                className="group bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
+              >
+                <span className="text-4xl group-hover:scale-110 transition-transform">📋</span>
+                <span className="font-semibold text-slate-300 text-center">Overt Hotel<br/>Checklist</span>
+              </button>
+              {/* Placeholders for future overt audits */}
+              <div className="border border-dashed border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center opacity-50">
+                <span className="text-2xl mb-2">🔜</span>
+                <span className="text-xs text-slate-500 font-semibold text-center">Pub Checklist<br/>(Coming Soon)</span>
+              </div>
+              <div className="border border-dashed border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center opacity-50">
+                <span className="text-2xl mb-2">🔜</span>
+                <span className="text-xs text-slate-500 font-semibold text-center">Restaurant Checklist<br/>(Coming Soon)</span>
+              </div>
+            </div>
+          </section>
         </div>
 
         <div className="flex justify-center mt-8">
