@@ -3,9 +3,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { generateUniversalPDF } from "../utils/pdfGenerator";
+import { getActiveConfiguration } from "../utils/configMigration";
 import BarStealthCamera, { BarStealthCameraRef } from "../bar/BarStealthCamera";
 
 interface InfractionEvent {
+  id: string;
   timestamp: number;
   staff: string;
   detail?: string;
@@ -20,27 +22,37 @@ export default function RestaurantAuditPage() {
   const [auditorName, setAuditorName] = useState("");
 
   const [activeStaff, setActiveStaff] = useState<string>("General / Unknown");
-  const [staffList, setStaffList] = useState<string[]>(["General / Unknown"]);
+  const [staffList, setStaffList] = useState<string[]>([
+    "General / Unknown",
+    "Staff 1",
+    "Staff 2",
+    "Staff 3",
+    "Staff 4"
+  ]);
   const [newStaffInput, setNewStaffInput] = useState("");
 
-  const [metrics, setMetrics] = useState({
-    // Negative
-    offPocketCash: [] as InfractionEvent[],
-    unrecordedUpgrade: [] as InfractionEvent[],
-    tableSquatting: [] as InfractionEvent[],
-    unauthComps: [] as InfractionEvent[],
-    tillLeftOpen: [] as InfractionEvent[],
-    priceDiscrepancy: [] as InfractionEvent[],
-    
-    // Positive
-    allergenVerification: [] as InfractionEvent[],
-    highMarginUpsell: [] as InfractionEvent[],
-    billAccuracy: [] as InfractionEvent[],
-    
-    // Timers
-    timeToMenu: [] as { timestamp: string, duration: number, staff: string }[],
-    timeToMains: [] as { timestamp: string, duration: number, staff: string }[],
-  });
+  const [events, setEvents] = useState<InfractionEvent[]>([]);
+  const [timerEvents, setTimerEvents] = useState<{ id: string, timestamp: string, duration: number, staff: string }[]>([]);
+  const [config, setConfig] = useState<any>(null);
+  const [photosTaken, setPhotosTaken] = useState(0);
+
+  const renameStaff = (oldName: string) => {
+    if (oldName === "General / Unknown") return;
+    const newName = window.prompt("Enter actual name for this staff member:", oldName);
+    if (newName && newName.trim() && newName.trim() !== oldName) {
+      const trimmedName = newName.trim();
+      setStaffList(prev => prev.map(s => s === oldName ? trimmedName : s));
+      setEvents(prev => prev.map(e => e.staff === oldName ? { ...e, staff: trimmedName } : e));
+      setTimerEvents(prev => prev.map(e => e.staff === oldName ? { ...e, staff: trimmedName } : e));
+      if (activeStaff === oldName) {
+        setActiveStaff(trimmedName);
+      }
+    }
+  };
+
+  useEffect(() => {
+    setConfig(getActiveConfiguration().modules.RESTAURANT);
+  }, []);
 
   const [menuTimerStart, setMenuTimerStart] = useState<number | null>(null);
   const [mainsTimerStart, setMainsTimerStart] = useState<number | null>(null);
@@ -60,27 +72,12 @@ export default function RestaurantAuditPage() {
       cameraRef.current.capturePhoto();
       setCaptures(prev => [...prev, { dataUrl: '', timestamp: Date.now() }]); // Use length for UI counter
       
-      const flash = document.createElement('div');
-      flash.className = 'fixed inset-0 bg-white z-[999999] opacity-0 transition-opacity duration-75';
-      document.body.appendChild(flash);
-      requestAnimationFrame(() => {
-        flash.classList.remove('opacity-0');
-        flash.classList.add('opacity-100');
-        setTimeout(() => {
-          flash.classList.remove('opacity-100');
-          flash.classList.add('opacity-0');
-          setTimeout(() => document.body.removeChild(flash), 100);
-        }, 50);
-      });
+      // Flash removed for covertness
     }
   };
 
-  const addEvent = (key: keyof typeof metrics, label: string) => {
-    if (key === 'timeToMenu' || key === 'timeToMains') return;
-    setMetrics(prev => ({
-      ...prev,
-      [key]: [...(prev[key] as any[]), { timestamp: Date.now(), staff: activeStaff }]
-    }));
+  const addEvent = (id: string) => {
+    setEvents(prev => [...prev, { id, timestamp: Date.now(), staff: activeStaff }]);
   };
 
   const handleAddStaff = () => {
@@ -104,23 +101,20 @@ export default function RestaurantAuditPage() {
       staffList,
       captures: localCaptures,
       metrics: {
-        negative: [
-          { label: 'Off-Pocket Cash', count: metrics.offPocketCash.length, events: metrics.offPocketCash },
-          { label: 'Unrecorded Upgrade', count: metrics.unrecordedUpgrade.length, events: metrics.unrecordedUpgrade },
-          { label: 'Table Squatting', count: metrics.tableSquatting.length, events: metrics.tableSquatting },
-          { label: 'Unauthorized Comps', count: metrics.unauthComps.length, events: metrics.unauthComps },
-          { label: 'Till Left Open', count: metrics.tillLeftOpen.length, events: metrics.tillLeftOpen },
-          { label: 'Price Discrepancy', count: metrics.priceDiscrepancy.length, events: metrics.priceDiscrepancy },
-        ],
-        positive: [
-          { label: 'Allergen Verification', count: metrics.allergenVerification.length, events: metrics.allergenVerification },
-          { label: 'High-Margin Upsell', count: metrics.highMarginUpsell.length, events: metrics.highMarginUpsell },
-          { label: 'Bill Accuracy', count: metrics.billAccuracy.length, events: metrics.billAccuracy },
-        ],
-        timers: [
-          { label: 'Time to Menu', events: metrics.timeToMenu },
-          { label: 'Time to Mains', events: metrics.timeToMains },
-        ]
+        negative: config?.negative.map((def: any) => ({
+          label: def.label,
+          count: events.filter(e => e.id === def.id).length,
+          events: events.filter(e => e.id === def.id).map(e => ({ ...e, detail: def.description }))
+        })) || [],
+        positive: config?.positive.map((def: any) => ({
+          label: def.label,
+          count: events.filter(e => e.id === def.id).length,
+          events: events.filter(e => e.id === def.id).map(e => ({ ...e, detail: def.description }))
+        })) || [],
+        timers: config?.timers.map((def: any) => ({
+          label: def.label,
+          events: timerEvents.filter(e => e.id === def.id)
+        })) || []
       }
     });
   };
@@ -175,7 +169,7 @@ export default function RestaurantAuditPage() {
 
   if (isAddingStaff) {
     return (
-      <div className="fixed inset-0 z-[99999] bg-black text-white font-sans flex flex-col h-screen w-screen overflow-hidden">
+      <div className="fixed inset-0 z-[99999] bg-black text-white font-sans flex flex-col h-[100dvh] w-screen overflow-hidden">
         {/* iOS Header */}
         <div className="bg-[#1c1c1e]/90 backdrop-blur border-b border-gray-800 pt-12 pb-3 px-4 flex items-center justify-between">
           <button onClick={() => setIsAddingStaff(false)} className="text-[#0a84ff] text-lg flex items-center">
@@ -210,7 +204,7 @@ export default function RestaurantAuditPage() {
         </div>
 
         {/* iMessage Input Area */}
-        <div className="bg-[#1c1c1e] border-t border-gray-800 p-4 pb-8">
+        <div className="bg-[#1c1c1e] border-t border-gray-800 p-4 pb-[env(safe-area-inset-bottom,20px)]">
           <div className="flex gap-2 items-end">
             <button className="text-[#0a84ff] p-2 shrink-0">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
@@ -254,6 +248,15 @@ export default function RestaurantAuditPage() {
 
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900 text-slate-100 font-sans p-4 pb-20">
+      
+      {/* Stealthy Panic Button Side */}
+      <button 
+        onClick={() => setIsPanicked(true)}
+        className="fixed right-0 top-1/3 -translate-y-1/2 w-8 h-[60vh] bg-slate-900 border-y border-l border-slate-800 rounded-l-xl flex items-center justify-center z-[100] group"
+      >
+        <span className="text-slate-600 font-mono text-[10px] font-bold tracking-widest -rotate-90 whitespace-nowrap opacity-50 group-hover:opacity-100 transition-opacity">SAFE MODE</span>
+      </button>
+
       <div className="sticky top-0 z-50 mb-6 -mx-4 -mt-4 bg-slate-950/90 backdrop-blur border-b border-slate-900">
         <div className="flex items-center justify-between">
           <div className="pl-4 py-3">
@@ -263,19 +266,8 @@ export default function RestaurantAuditPage() {
               </svg>
             </Link>
           </div>
-          <button 
-            onClick={() => setIsPanicked(true)}
-            className="flex-1 py-4 text-slate-500 font-mono text-xs font-bold tracking-widest opacity-80 hover:bg-slate-900 transition-colors"
-          >
-            [ SAFE MODE ]
-          </button>
-          <div className="pr-4 flex items-center">
-            <div className="w-10 h-10 rounded-full border-2 border-slate-700 bg-slate-800 flex items-center justify-center overflow-hidden shadow-[0_0_15px_rgba(0,0,0,0.5)] cursor-pointer" onClick={triggerPhotoCapture}>
-              <div className="w-8 h-8 rounded-full overflow-hidden opacity-50">
-                <BarStealthCamera ref={cameraRef} />
-              </div>
-            </div>
-          </div>
+          <div className="w-12"></div> {/* Spacer */}
+          <div className="pr-4 flex items-center"></div>
         </div>
       </div>
 
@@ -313,7 +305,14 @@ export default function RestaurantAuditPage() {
             </div>
             <div className="flex flex-col flex-1 overflow-hidden">
               <span className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-0.5">Tracking Target (Staff / Table)</span>
-              <span className="text-sm font-bold text-white leading-tight truncate">{activeStaff}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-white leading-tight truncate">{activeStaff}</span>
+                {activeStaff !== "General / Unknown" && (
+                  <button onClick={() => renameStaff(activeStaff)} className="text-slate-500 hover:text-slate-300 transition-colors p-1 bg-slate-800 rounded">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           
@@ -372,54 +371,23 @@ export default function RestaurantAuditPage() {
 
           {viewMode === "negative" ? (
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => addEvent('offPocketCash', 'Off-Pocket Cash')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">💷</span>
-                <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">Off-Pocket Cash</span>
-                <span className="text-[10px] text-red-400 font-bold">{metrics.offPocketCash.length}</span>
-              </button>
-              <button onClick={() => addEvent('unrecordedUpgrade', 'Unrecorded Upgrade')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">⬆️</span>
-                <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">Unrecorded Upgrade</span>
-                <span className="text-[10px] text-red-400 font-bold">{metrics.unrecordedUpgrade.length}</span>
-              </button>
-              <button onClick={() => addEvent('tableSquatting', 'Table Squatting')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">⏳</span>
-                <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">Table Squatting</span>
-                <span className="text-[10px] text-red-400 font-bold">{metrics.tableSquatting.length}</span>
-              </button>
-              <button onClick={() => addEvent('unauthComps', 'Unauthorized Comps')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">🎁</span>
-                <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">Unauthorized Comps</span>
-                <span className="text-[10px] text-red-400 font-bold">{metrics.unauthComps.length}</span>
-              </button>
-              <button onClick={() => addEvent('tillLeftOpen', 'Till Left Open')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">🔓</span>
-                <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">Till Left Open</span>
-                <span className="text-[10px] text-red-400 font-bold">{metrics.tillLeftOpen.length}</span>
-              </button>
-              <button onClick={() => addEvent('priceDiscrepancy', 'Price Discrepancy')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">📉</span>
-                <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">Menu Price Discrepancy</span>
-                <span className="text-[10px] text-red-400 font-bold">{metrics.priceDiscrepancy.length}</span>
-              </button>
+              {config?.negative.map((m: any) => (
+                <button key={m.id} onClick={() => addEvent(m.id)} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
+                  <span className="text-2xl">🔴</span>
+                  <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">{m.label}</span>
+                  <span className="text-[10px] text-red-400 font-bold">{events.filter(e => e.id === m.id).length}</span>
+                </button>
+              ))}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button onClick={() => addEvent('allergenVerification', 'Allergen Verification')} className="bg-emerald-900/20 hover:bg-emerald-800/40 border border-emerald-700/50 p-4 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">🥜</span>
-                <span className="text-xs font-semibold text-emerald-100 text-center">Allergen Verification</span>
-                <span className="text-[10px] font-bold text-emerald-400 px-2 py-0.5 bg-emerald-950 rounded-full">{metrics.allergenVerification.length}</span>
-              </button>
-              <button onClick={() => addEvent('highMarginUpsell', 'High-Margin Upsell')} className="bg-emerald-900/20 hover:bg-emerald-800/40 border border-emerald-700/50 p-4 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">🍷</span>
-                <span className="text-xs font-semibold text-emerald-100 text-center">High-Margin Upsell</span>
-                <span className="text-[10px] font-bold text-emerald-400 px-2 py-0.5 bg-emerald-950 rounded-full">{metrics.highMarginUpsell.length}</span>
-              </button>
-              <button onClick={() => addEvent('billAccuracy', 'Bill Accuracy')} className="bg-emerald-900/20 hover:bg-emerald-800/40 border border-emerald-700/50 p-4 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">🧾</span>
-                <span className="text-xs font-semibold text-emerald-100 text-center">Bill Accuracy</span>
-                <span className="text-[10px] font-bold text-emerald-400 px-2 py-0.5 bg-emerald-950 rounded-full">{metrics.billAccuracy.length}</span>
-              </button>
+              {config?.positive.map((m: any) => (
+                <button key={m.id} onClick={() => addEvent(m.id)} className="bg-emerald-900/20 hover:bg-emerald-800/40 border border-emerald-700/50 p-4 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors">
+                  <span className="text-2xl">🟢</span>
+                  <span className="text-xs font-semibold text-emerald-100 text-center">{m.label}</span>
+                  <span className="text-[10px] font-bold text-emerald-400 px-2 py-0.5 bg-emerald-950 rounded-full">{events.filter(e => e.id === m.id).length}</span>
+                </button>
+              ))}
             </div>
           )}
         </section>
@@ -433,7 +401,7 @@ export default function RestaurantAuditPage() {
                 <button 
                   onClick={() => {
                     const dur = Math.round((Date.now() - menuTimerStart) / 1000);
-                    setMetrics(p => ({ ...p, timeToMenu: [...p.timeToMenu, { timestamp: new Date().toISOString(), duration: dur, staff: activeStaff }] }));
+                    setTimerEvents(prev => [...prev, { id: "timeToMenu", timestamp: new Date().toISOString(), duration: dur, staff: activeStaff }]);
                     setMenuTimerStart(null);
                   }}
                   className="w-full bg-red-600/20 text-red-400 border border-red-500/30 py-2 rounded font-bold text-xs animate-pulse"
@@ -448,7 +416,7 @@ export default function RestaurantAuditPage() {
                   START
                 </button>
               )}
-              <span className="text-[10px] text-slate-500">{metrics.timeToMenu.length} logged</span>
+              <span className="text-[10px] text-slate-500">{timerEvents.filter(e => e.id === "timeToMenu").length} logged</span>
             </div>
             
             <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center gap-2">
@@ -457,7 +425,7 @@ export default function RestaurantAuditPage() {
                 <button 
                   onClick={() => {
                     const dur = Math.round((Date.now() - mainsTimerStart) / 1000);
-                    setMetrics(p => ({ ...p, timeToMains: [...p.timeToMains, { timestamp: new Date().toISOString(), duration: dur, staff: activeStaff }] }));
+                    setTimerEvents(prev => [...prev, { id: "timeToMains", timestamp: new Date().toISOString(), duration: dur, staff: activeStaff }]);
                     setMainsTimerStart(null);
                   }}
                   className="w-full bg-red-600/20 text-red-400 border border-red-500/30 py-2 rounded font-bold text-xs animate-pulse"
@@ -472,8 +440,25 @@ export default function RestaurantAuditPage() {
                   START
                 </button>
               )}
-              <span className="text-[10px] text-slate-500">{metrics.timeToMains.length} logged</span>
+              <span className="text-[10px] text-slate-500">{timerEvents.filter(e => e.id === "timeToMains").length} logged</span>
             </div>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Evidence</h2>
+          <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center gap-4">
+            <div className="w-full aspect-video rounded-lg overflow-hidden border border-slate-600 relative bg-black shadow-inner">
+              <BarStealthCamera ref={cameraRef} />
+            </div>
+            <button 
+              onClick={triggerPhotoCapture}
+              className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 py-3 rounded-lg font-bold flex items-center justify-center gap-2 active:scale-95 transition-all"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              TAKE PHOTO EVIDENCE
+            </button>
+            <span className="text-xs text-slate-400">{captures.length} photos taken this session</span>
           </div>
         </section>
 

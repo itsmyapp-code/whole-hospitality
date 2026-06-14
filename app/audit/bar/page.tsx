@@ -4,10 +4,11 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import BarStealthCamera, { BarStealthCameraRef } from "./BarStealthCamera";
 import { generateUniversalPDF } from "../utils/pdfGenerator";
+import { getActiveConfiguration } from "../utils/configMigration";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-type InfractionEvent = { timestamp: string; staff: string };
+type InfractionEvent = { id: string; timestamp: string | number; staff: string; detail?: string };
 
 export default function BarAuditPage() {
   const [isPanicked, setIsPanicked] = useState(false);
@@ -26,46 +27,43 @@ export default function BarAuditPage() {
   const [auditorName, setAuditorName] = useState("");
 
   // Staff Tracker State
-  const [staffList, setStaffList] = useState<string[]>(["General / Unknown"]);
+  const [staffList, setStaffList] = useState<string[]>([
+    "General / Unknown",
+    "Staff 1",
+    "Staff 2",
+    "Staff 3",
+    "Staff 4"
+  ]);
   const [activeStaff, setActiveStaff] = useState<string>("General / Unknown");
   const [newStaffInput, setNewStaffInput] = useState("");
 
   // Audit Metrics State
-  const [metrics, setMetrics] = useState({
-    freePours: [] as InfractionEvent[],
-    incorrectMeasures: [] as InfractionEvent[],
-    noRingIns: [] as InfractionEvent[],
-    chargeDiscrepancies: [] as InfractionEvent[],
-    tillLeftOpen: [] as InfractionEvent[],
-    unrecordedWastage: [] as InfractionEvent[],
-    givingAwayDrinks: [] as InfractionEvent[],
-    dirtyGlassware: [] as InfractionEvent[],
-    usingPhone: [] as InfractionEvent[],
-    eatingDrinking: [] as InfractionEvent[],
-    underageStaff: [] as InfractionEvent[],
-    noIdCheck: [] as InfractionEvent[],
-    // Positive
-    immediateRingIn: [] as InfractionEvent[],
-    consistentTillClosure: [] as InfractionEvent[],
-    accurateChangeVerifications: [] as InfractionEvent[],
-    immediateGreeting: [] as InfractionEvent[],
-    upselling: [] as InfractionEvent[],
-    efficiencyUnderPressure: [] as InfractionEvent[],
-    exactMeasurePouring: [] as InfractionEvent[],
-    activeSpillLogging: [] as InfractionEvent[],
-    perfectGlassware: [] as InfractionEvent[],
-    proactiveAgeVerification: [] as InfractionEvent[],
-    responsibleService: [] as InfractionEvent[],
-    cleanlinessMaintenance: [] as InfractionEvent[],
-    // Timers
-    timeToGreetSecs: [] as { timestamp: string, duration: number, staff: string }[],
-    timeToServeSecs: [] as { timestamp: string, duration: number, staff: string }[],
-    photosTaken: 0,
-  });
+  const [events, setEvents] = useState<InfractionEvent[]>([]);
+  const [timerEvents, setTimerEvents] = useState<{ id: string, timestamp: string, duration: number, staff: string }[]>([]);
+  const [config, setConfig] = useState<any>(null);
+  const [photosTaken, setPhotosTaken] = useState(0);
+
+  useEffect(() => {
+    setConfig(getActiveConfiguration().modules.BAR);
+  }, []);
 
   // Timers State
   const [greetTimerStart, setGreetTimerStart] = useState<number | null>(null);
   const [serveTimerStart, setServeTimerStart] = useState<number | null>(null);
+
+  const renameStaff = (oldName: string) => {
+    if (oldName === "General / Unknown") return;
+    const newName = window.prompt("Enter actual name for this staff member:", oldName);
+    if (newName && newName.trim() && newName.trim() !== oldName) {
+      const trimmedName = newName.trim();
+      setStaffList(prev => prev.map(s => s === oldName ? trimmedName : s));
+      setEvents(prev => prev.map(e => e.staff === oldName ? { ...e, staff: trimmedName } : e));
+      setTimerEvents(prev => prev.map(e => e.staff === oldName ? { ...e, staff: trimmedName } : e));
+      if (activeStaff === oldName) {
+        setActiveStaff(trimmedName);
+      }
+    }
+  };
 
   const cameraRef = useRef<BarStealthCameraRef>(null);
 
@@ -78,21 +76,14 @@ export default function BarAuditPage() {
     }
   };
 
-  const addEvent = (key: keyof typeof metrics, label: string) => {
-    if (key === 'photosTaken' || key === 'timeToGreetSecs' || key === 'timeToServeSecs') return;
-    setMetrics(prev => ({
-      ...prev,
-      [key]: [...(prev[key] as InfractionEvent[]), { timestamp: new Date().toISOString(), staff: activeStaff }]
-    }));
+  const addEvent = (id: string) => {
+    setEvents(prev => [...prev, { id, timestamp: Date.now(), staff: activeStaff }]);
   };
 
   const toggleGreetTimer = () => {
     if (greetTimerStart) {
       const elapsed = Math.round((Date.now() - greetTimerStart) / 1000);
-      setMetrics(prev => ({ 
-        ...prev, 
-        timeToGreetSecs: [...prev.timeToGreetSecs, { timestamp: new Date().toISOString(), duration: elapsed, staff: activeStaff }] 
-      }));
+      setTimerEvents(prev => [...prev, { id: "timeToGreet", timestamp: new Date().toISOString(), duration: elapsed, staff: activeStaff }]);
       setGreetTimerStart(null);
     } else {
       setGreetTimerStart(Date.now());
@@ -102,10 +93,7 @@ export default function BarAuditPage() {
   const toggleServeTimer = () => {
     if (serveTimerStart) {
       const elapsed = Math.round((Date.now() - serveTimerStart) / 1000);
-      setMetrics(prev => ({ 
-        ...prev, 
-        timeToServeSecs: [...prev.timeToServeSecs, { timestamp: new Date().toISOString(), duration: elapsed, staff: activeStaff }] 
-      }));
+      setTimerEvents(prev => [...prev, { id: "timeToServe", timestamp: new Date().toISOString(), duration: elapsed, staff: activeStaff }]);
       setServeTimerStart(null);
     } else {
       setServeTimerStart(Date.now());
@@ -115,7 +103,7 @@ export default function BarAuditPage() {
   const triggerCamera = () => {
     if (cameraRef.current) {
       cameraRef.current.capturePhoto();
-      setMetrics(prev => ({ ...prev, photosTaken: prev.photosTaken + 1 }));
+      setPhotosTaken(prev => prev + 1);
     }
   };
 
@@ -123,38 +111,18 @@ export default function BarAuditPage() {
     if (window.confirm("Are you sure you want to completely wipe all data and start a new audit?")) {
       setSiteName("");
       setAuditorName("");
-      setStaffList(["General / Unknown"]);
+      setStaffList([
+        "General / Unknown",
+        "Staff 1",
+        "Staff 2",
+        "Staff 3",
+        "Staff 4"
+      ]);
       setActiveStaff("General / Unknown");
       setNewStaffInput("");
-      setMetrics({
-        freePours: [],
-        incorrectMeasures: [],
-        noRingIns: [],
-        chargeDiscrepancies: [],
-        tillLeftOpen: [],
-        unrecordedWastage: [],
-        givingAwayDrinks: [],
-        dirtyGlassware: [],
-        usingPhone: [],
-        eatingDrinking: [],
-        underageStaff: [],
-        noIdCheck: [],
-        immediateRingIn: [],
-        consistentTillClosure: [],
-        accurateChangeVerifications: [],
-        immediateGreeting: [],
-        upselling: [],
-        efficiencyUnderPressure: [],
-        exactMeasurePouring: [],
-        activeSpillLogging: [],
-        perfectGlassware: [],
-        proactiveAgeVerification: [],
-        responsibleService: [],
-        cleanlinessMaintenance: [],
-        timeToGreetSecs: [],
-        timeToServeSecs: [],
-        photosTaken: 0,
-      });
+      setEvents([]);
+      setTimerEvents([]);
+      setPhotosTaken(0);
       setGreetTimerStart(null);
       setServeTimerStart(null);
       try {
@@ -177,38 +145,20 @@ export default function BarAuditPage() {
       staffList,
       captures,
       metrics: {
-        negative: [
-          { label: 'Free Pours', count: metrics.freePours.length, events: metrics.freePours },
-          { label: 'Incorrect Measures', count: metrics.incorrectMeasures.length, events: metrics.incorrectMeasures },
-          { label: 'No Ring Ins', count: metrics.noRingIns.length, events: metrics.noRingIns },
-          { label: 'Charge Discrepancies', count: metrics.chargeDiscrepancies.length, events: metrics.chargeDiscrepancies },
-          { label: 'Till Left Open', count: metrics.tillLeftOpen.length, events: metrics.tillLeftOpen },
-          { label: 'Unrecorded Wastage', count: metrics.unrecordedWastage.length, events: metrics.unrecordedWastage },
-          { label: 'Giving Away Drinks', count: metrics.givingAwayDrinks.length, events: metrics.givingAwayDrinks },
-          { label: 'Dirty Glassware', count: metrics.dirtyGlassware.length, events: metrics.dirtyGlassware },
-          { label: 'Using Phone', count: metrics.usingPhone.length, events: metrics.usingPhone },
-          { label: 'Eating / Drinking', count: metrics.eatingDrinking.length, events: metrics.eatingDrinking },
-          { label: 'Underage Staff', count: metrics.underageStaff.length, events: metrics.underageStaff },
-          { label: 'No ID Check', count: metrics.noIdCheck.length, events: metrics.noIdCheck },
-        ],
-        positive: [
-          { label: 'Immediate Ring-In', count: metrics.immediateRingIn.length, events: metrics.immediateRingIn },
-          { label: 'Consistent Till Closure', count: metrics.consistentTillClosure.length, events: metrics.consistentTillClosure },
-          { label: 'Accurate Change Verifications', count: metrics.accurateChangeVerifications.length, events: metrics.accurateChangeVerifications },
-          { label: 'Immediate Greeting', count: metrics.immediateGreeting.length, events: metrics.immediateGreeting },
-          { label: 'Upselling', count: metrics.upselling.length, events: metrics.upselling },
-          { label: 'Efficiency Under Pressure', count: metrics.efficiencyUnderPressure.length, events: metrics.efficiencyUnderPressure },
-          { label: 'Exact Measure Pouring', count: metrics.exactMeasurePouring.length, events: metrics.exactMeasurePouring },
-          { label: 'Active Spill Logging', count: metrics.activeSpillLogging.length, events: metrics.activeSpillLogging },
-          { label: 'Perfect Glassware', count: metrics.perfectGlassware.length, events: metrics.perfectGlassware },
-          { label: 'Proactive Age Verification', count: metrics.proactiveAgeVerification.length, events: metrics.proactiveAgeVerification },
-          { label: 'Responsible Service', count: metrics.responsibleService.length, events: metrics.responsibleService },
-          { label: 'Cleanliness Maintenance', count: metrics.cleanlinessMaintenance.length, events: metrics.cleanlinessMaintenance },
-        ],
-        timers: [
-          { label: 'Time to Greet', events: metrics.timeToGreetSecs },
-          { label: 'Time to Serve', events: metrics.timeToServeSecs },
-        ]
+        negative: config?.negative.map((def: any) => ({
+          label: def.label,
+          count: events.filter(e => e.id === def.id).length,
+          events: events.filter(e => e.id === def.id).map(e => ({ ...e, detail: def.description }))
+        })) || [],
+        positive: config?.positive.map((def: any) => ({
+          label: def.label,
+          count: events.filter(e => e.id === def.id).length,
+          events: events.filter(e => e.id === def.id).map(e => ({ ...e, detail: def.description }))
+        })) || [],
+        timers: config?.timers.map((def: any) => ({
+          label: def.label,
+          events: timerEvents.filter(e => e.id === def.id)
+        })) || []
       }
     });
   };
@@ -269,7 +219,7 @@ export default function BarAuditPage() {
 
   if (isAddingStaff) {
     return (
-      <div className="fixed inset-0 z-[99999] bg-black text-white font-sans flex flex-col h-screen w-screen overflow-hidden">
+      <div className="fixed inset-0 z-[99999] bg-black text-white font-sans flex flex-col h-[100dvh] w-screen overflow-hidden">
         {/* iOS Header */}
         <div className="bg-[#1c1c1e]/90 backdrop-blur border-b border-gray-800 pt-12 pb-3 px-4 flex items-center justify-between">
           <button onClick={() => setIsAddingStaff(false)} className="text-[#0a84ff] text-lg flex items-center">
@@ -304,7 +254,7 @@ export default function BarAuditPage() {
         </div>
 
         {/* iMessage Input Area */}
-        <div className="bg-[#1c1c1e] border-t border-gray-800 p-4 pb-8">
+        <div className="bg-[#1c1c1e] border-t border-gray-800 p-4 pb-[env(safe-area-inset-bottom,20px)]">
           <div className="flex gap-2 items-end">
             <button className="text-[#0a84ff] p-2 shrink-0">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
@@ -350,6 +300,14 @@ export default function BarAuditPage() {
     <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900 text-slate-100 font-sans p-4 pb-20">
       <div id="photo-flash" className="fixed inset-0 bg-white z-[999999] opacity-0 pointer-events-none transition-opacity duration-150"></div>
       
+      {/* Stealthy Panic Button Side */}
+      <button 
+        onClick={() => setIsPanicked(true)}
+        className="fixed right-0 top-1/3 -translate-y-1/2 w-8 h-[60vh] bg-slate-900 border-y border-l border-slate-800 rounded-l-xl flex items-center justify-center z-[100] group"
+      >
+        <span className="text-slate-600 font-mono text-[10px] font-bold tracking-widest -rotate-90 whitespace-nowrap opacity-50 group-hover:opacity-100 transition-opacity">SAFE MODE</span>
+      </button>
+
       {/* Stealthy Panic Button Header */}
       <div className="sticky top-0 z-50 mb-6 -mx-4 -mt-4 bg-slate-950/90 backdrop-blur border-b border-slate-900">
         <div className="flex items-center justify-between">
@@ -360,12 +318,6 @@ export default function BarAuditPage() {
               </svg>
             </Link>
           </div>
-          <button 
-            onClick={() => setIsPanicked(true)}
-            className="flex-1 py-4 text-slate-500 font-mono text-xs font-bold tracking-widest opacity-80 hover:bg-slate-900 transition-colors"
-          >
-            [ SAFE MODE ]
-          </button>
           <div className="w-12"></div> {/* Spacer to keep Safe Mode perfectly centered */}
         </div>
       </div>
@@ -407,7 +359,14 @@ export default function BarAuditPage() {
             </div>
             <div className="flex flex-col flex-1 overflow-hidden">
               <span className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-0.5">Tracking Target</span>
-              <span className="text-sm font-bold text-white leading-tight truncate">{activeStaff}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-white leading-tight truncate">{activeStaff}</span>
+                {activeStaff !== "General / Unknown" && (
+                  <button onClick={() => renameStaff(activeStaff)} className="text-slate-500 hover:text-slate-300 transition-colors p-1 bg-slate-800 rounded">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           
@@ -441,7 +400,7 @@ export default function BarAuditPage() {
               className="w-full bg-[#2c2c2e] hover:bg-[#3a3a3c] text-slate-300 py-3 mt-2 rounded-xl border border-slate-700 font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-              Take Photo Evidence {metrics.photosTaken > 0 && `(${metrics.photosTaken})`}
+              Take Photo Evidence {photosTaken > 0 && `(${photosTaken})`}
             </button>
           </div>
         </section>
@@ -467,130 +426,24 @@ export default function BarAuditPage() {
           </div>
 
           {viewMode === "negative" ? (
-            <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => addEvent('freePours', 'Free Pour')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">🥃</span>
-                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Free Pours</span>
-                <span className="text-[10px] text-red-400">{metrics.freePours.length}</span>
-              </button>
-              <button onClick={() => addEvent('incorrectMeasures', 'Incorrect Measure')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">⚖️</span>
-                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Incorrect Measure</span>
-                <span className="text-[10px] text-red-400">{metrics.incorrectMeasures.length}</span>
-              </button>
-              <button onClick={() => addEvent('noRingIns', 'No Ring In')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">🧾</span>
-                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">No Ring In</span>
-                <span className="text-[10px] text-red-400">{metrics.noRingIns.length}</span>
-              </button>
-              <button onClick={() => addEvent('chargeDiscrepancies', 'Charge Discrepancy')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">💷</span>
-                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Charge Discrepancy</span>
-                <span className="text-[10px] text-red-400">{metrics.chargeDiscrepancies.length}</span>
-              </button>
-              <button onClick={() => addEvent('tillLeftOpen', 'Till Left Open')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">🔓</span>
-                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Till Left Open</span>
-                <span className="text-[10px] text-red-400">{metrics.tillLeftOpen.length}</span>
-              </button>
-              <button onClick={() => addEvent('unrecordedWastage', 'Unrecorded Wastage')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">🗑️</span>
-                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Unrecorded Wastage</span>
-                <span className="text-[10px] text-red-400">{metrics.unrecordedWastage.length}</span>
-              </button>
-              <button onClick={() => addEvent('givingAwayDrinks', 'Giving Away Drinks')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">🍻</span>
-                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Giving Away Drinks</span>
-                <span className="text-[10px] text-red-400">{metrics.givingAwayDrinks.length}</span>
-              </button>
-              <button onClick={() => addEvent('dirtyGlassware', 'Dirty Glassware')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">🍷</span>
-                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Dirty Glassware</span>
-                <span className="text-[10px] text-red-400">{metrics.dirtyGlassware.length}</span>
-              </button>
-              <button onClick={() => addEvent('usingPhone', 'Using Phone')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">📱</span>
-                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Using Phone</span>
-                <span className="text-[10px] text-red-400">{metrics.usingPhone.length}</span>
-              </button>
-              <button onClick={() => addEvent('eatingDrinking', 'Eating / Drinking')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">🍔</span>
-                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Eating/Drinking</span>
-                <span className="text-[10px] text-red-400">{metrics.eatingDrinking.length}</span>
-              </button>
-              <button onClick={() => addEvent('underageStaff', 'Underage Staff')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">🔞</span>
-                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">Underage Staff</span>
-                <span className="text-[10px] text-red-400">{metrics.underageStaff.length}</span>
-              </button>
-              <button onClick={() => addEvent('noIdCheck', 'No ID Check')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">🆔</span>
-                <span className="text-[10px] font-semibold text-slate-300 text-center leading-tight">No ID Check</span>
-                <span className="text-[10px] text-red-400">{metrics.noIdCheck.length}</span>
-              </button>
+            <div className="grid grid-cols-2 gap-2">
+              {config?.negative.map((m: any) => (
+                <button key={m.id} onClick={() => addEvent(m.id)} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
+                  <span className="text-2xl">🔴</span>
+                  <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">{m.label}</span>
+                  <span className="text-[10px] text-red-400 font-bold">{events.filter(e => e.id === m.id).length}</span>
+                </button>
+              ))}
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => addEvent('immediateRingIn', 'Immediate Ring-In')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">🧾</span>
-                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Instant Ring-In</span>
-                <span className="text-[10px] text-emerald-400 font-bold">{metrics.immediateRingIn.length}</span>
-              </button>
-              <button onClick={() => addEvent('consistentTillClosure', 'Consistent Till Closure')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">🔒</span>
-                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Till Closure</span>
-                <span className="text-[10px] text-emerald-400 font-bold">{metrics.consistentTillClosure.length}</span>
-              </button>
-              <button onClick={() => addEvent('accurateChangeVerifications', 'Accurate Change Verifications')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">💷</span>
-                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Accurate Change</span>
-                <span className="text-[10px] text-emerald-400 font-bold">{metrics.accurateChangeVerifications.length}</span>
-              </button>
-              <button onClick={() => addEvent('immediateGreeting', 'Immediate Greeting')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">👋</span>
-                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Instant Greet</span>
-                <span className="text-[10px] text-emerald-400 font-bold">{metrics.immediateGreeting.length}</span>
-              </button>
-              <button onClick={() => addEvent('upselling', 'Upselling')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">📈</span>
-                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Upselling</span>
-                <span className="text-[10px] text-emerald-400 font-bold">{metrics.upselling.length}</span>
-              </button>
-              <button onClick={() => addEvent('efficiencyUnderPressure', 'Efficiency Under Pressure')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">⚡</span>
-                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Pressure Eff.</span>
-                <span className="text-[10px] text-emerald-400 font-bold">{metrics.efficiencyUnderPressure.length}</span>
-              </button>
-              <button onClick={() => addEvent('exactMeasurePouring', 'Exact Measure Pouring')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">⚖️</span>
-                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Exact Measures</span>
-                <span className="text-[10px] text-emerald-400 font-bold">{metrics.exactMeasurePouring.length}</span>
-              </button>
-              <button onClick={() => addEvent('activeSpillLogging', 'Active Spill Logging')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">📝</span>
-                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Spill Logging</span>
-                <span className="text-[10px] text-emerald-400 font-bold">{metrics.activeSpillLogging.length}</span>
-              </button>
-              <button onClick={() => addEvent('perfectGlassware', 'Perfect Glassware')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">🍷</span>
-                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Perfect Glass</span>
-                <span className="text-[10px] text-emerald-400 font-bold">{metrics.perfectGlassware.length}</span>
-              </button>
-              <button onClick={() => addEvent('proactiveAgeVerification', 'Proactive Age Verification')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">🆔</span>
-                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Age Verify</span>
-                <span className="text-[10px] text-emerald-400 font-bold">{metrics.proactiveAgeVerification.length}</span>
-              </button>
-              <button onClick={() => addEvent('responsibleService', 'Responsible Service')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">🛑</span>
-                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Resp. Service</span>
-                <span className="text-[10px] text-emerald-400 font-bold">{metrics.responsibleService.length}</span>
-              </button>
-              <button onClick={() => addEvent('cleanlinessMaintenance', 'Cleanliness Maintenance')} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
-                <span className="text-xl">✨</span>
-                <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">Cleanliness</span>
-                <span className="text-[10px] text-emerald-400 font-bold">{metrics.cleanlinessMaintenance.length}</span>
-              </button>
+              {config?.positive.map((m: any) => (
+                <button key={m.id} onClick={() => addEvent(m.id)} className="bg-emerald-900/40 hover:bg-emerald-800/60 border border-emerald-800/50 p-2 rounded flex flex-col items-center justify-center gap-1 transition-colors">
+                  <span className="text-xl">🟢</span>
+                  <span className="text-[10px] font-semibold text-emerald-100 text-center leading-tight">{m.label}</span>
+                  <span className="text-[10px] text-emerald-400 font-bold">{events.filter(e => e.id === m.id).length}</span>
+                </button>
+              ))}
             </div>
           )}
         </section>
@@ -602,7 +455,7 @@ export default function BarAuditPage() {
             <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-center justify-between">
               <div>
                 <span className="font-semibold block">Time to Greet</span>
-                <span className="text-xs text-slate-400">{metrics.timeToGreetSecs.length} recorded</span>
+                <span className="text-xs text-slate-400">{timerEvents.filter(e => e.id === "timeToGreet").length} recorded</span>
               </div>
               <button 
                 onClick={toggleGreetTimer}
@@ -615,7 +468,7 @@ export default function BarAuditPage() {
             <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-center justify-between">
               <div>
                 <span className="font-semibold block">Time to Serve</span>
-                <span className="text-xs text-slate-400">{metrics.timeToServeSecs.length} recorded</span>
+                <span className="text-xs text-slate-400">{timerEvents.filter(e => e.id === "timeToServe").length} recorded</span>
               </div>
               <button 
                 onClick={toggleServeTimer}
@@ -641,7 +494,7 @@ export default function BarAuditPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               TAKE PHOTO EVIDENCE
             </button>
-            <span className="text-xs text-slate-400">{metrics.photosTaken} photos taken this session</span>
+            <span className="text-xs text-slate-400">{photosTaken} photos taken this session</span>
           </div>
         </section>
 

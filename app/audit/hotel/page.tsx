@@ -3,9 +3,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { generateUniversalPDF } from "../utils/pdfGenerator";
+import { getActiveConfiguration } from "../utils/configMigration";
 import BarStealthCamera, { BarStealthCameraRef } from "../bar/BarStealthCamera";
 
 interface InfractionEvent {
+  id: string;
   timestamp: number;
   staff: string;
   detail?: string;
@@ -20,30 +22,39 @@ export default function HotelAuditPage() {
   const [auditorName, setAuditorName] = useState("");
 
   const [activeStaff, setActiveStaff] = useState<string>("General / Unknown");
-  const [staffList, setStaffList] = useState<string[]>(["General / Unknown"]);
+  const [staffList, setStaffList] = useState<string[]>([
+    "General / Unknown",
+    "Staff 1",
+    "Staff 2",
+    "Staff 3",
+    "Staff 4"
+  ]);
   const [newStaffInput, setNewStaffInput] = useState("");
 
   const cameraRef = useRef<BarStealthCameraRef>(null);
 
-  const [metrics, setMetrics] = useState({
-    // Negative
-    cashUpgradeLeak: [] as InfractionEvent[],
-    idComplianceFail: [] as InfractionEvent[],
-    guestDataExposure: [] as InfractionEvent[],
-    deepCleanOversight: [] as InfractionEvent[],
-    amenitiesMalfunction: [] as InfractionEvent[],
-    unattendedDesk: [] as InfractionEvent[],
-    
-    // Positive
-    loyaltyPush: [] as InfractionEvent[],
-    preemptiveConcierge: [] as InfractionEvent[],
-    expressDeparture: [] as InfractionEvent[],
-    
-    // Timers
-    checkInDuration: [] as { timestamp: string, duration: number, staff: string }[],
-    roomLatency: [] as { timestamp: string, duration: number, staff: string }[],
-    photosTaken: 0,
-  });
+  const [events, setEvents] = useState<InfractionEvent[]>([]);
+  const [timerEvents, setTimerEvents] = useState<{ id: string, timestamp: string, duration: number, staff: string }[]>([]);
+  const [config, setConfig] = useState<any>(null);
+  const [photosTaken, setPhotosTaken] = useState(0);
+
+  const renameStaff = (oldName: string) => {
+    if (oldName === "General / Unknown") return;
+    const newName = window.prompt("Enter actual name for this staff member:", oldName);
+    if (newName && newName.trim() && newName.trim() !== oldName) {
+      const trimmedName = newName.trim();
+      setStaffList(prev => prev.map(s => s === oldName ? trimmedName : s));
+      setEvents(prev => prev.map(e => e.staff === oldName ? { ...e, staff: trimmedName } : e));
+      setTimerEvents(prev => prev.map(e => e.staff === oldName ? { ...e, staff: trimmedName } : e));
+      if (activeStaff === oldName) {
+        setActiveStaff(trimmedName);
+      }
+    }
+  };
+
+  useEffect(() => {
+    setConfig(getActiveConfiguration().modules.HOTEL);
+  }, []);
 
   const [checkInTimerStart, setCheckInTimerStart] = useState<number | null>(null);
   const [roomTimerStart, setRoomTimerStart] = useState<number | null>(null);
@@ -55,12 +66,8 @@ export default function HotelAuditPage() {
     } catch (e) {}
   }, []);
 
-  const addEvent = (key: keyof typeof metrics, label: string) => {
-    if (key === 'checkInDuration' || key === 'roomLatency' || key === 'photosTaken') return;
-    setMetrics(prev => ({
-      ...prev,
-      [key]: [...(prev[key] as any[]), { timestamp: Date.now(), staff: activeStaff }]
-    }));
+  const addEvent = (id: string) => {
+    setEvents(prev => [...prev, { id, timestamp: Date.now(), staff: activeStaff }]);
   };
 
   const handleAddStaff = () => {
@@ -74,13 +81,9 @@ export default function HotelAuditPage() {
   const triggerPhotoCapture = () => {
     if (cameraRef.current) {
       cameraRef.current.capturePhoto();
-      setMetrics(prev => ({ ...prev, photosTaken: prev.photosTaken + 1 }));
+      setPhotosTaken(prev => prev + 1);
       
-      const el = document.getElementById("photo-flash");
-      if (el) {
-        el.style.opacity = "1";
-        setTimeout(() => el.style.opacity = "0", 150);
-      }
+      // Flash removed for covertness
     }
   };
 
@@ -97,23 +100,20 @@ export default function HotelAuditPage() {
       staffList,
       captures,
       metrics: {
-        negative: [
-          { label: 'Cash Upgrade Leak', count: metrics.cashUpgradeLeak.length, events: metrics.cashUpgradeLeak },
-          { label: 'ID/Immigration Fail', count: metrics.idComplianceFail.length, events: metrics.idComplianceFail },
-          { label: 'Guest Data Exposure', count: metrics.guestDataExposure.length, events: metrics.guestDataExposure },
-          { label: 'Deep-Clean Oversight', count: metrics.deepCleanOversight.length, events: metrics.deepCleanOversight },
-          { label: 'Amenities Malfunction', count: metrics.amenitiesMalfunction.length, events: metrics.amenitiesMalfunction },
-          { label: 'Unattended Desk', count: metrics.unattendedDesk.length, events: metrics.unattendedDesk },
-        ],
-        positive: [
-          { label: 'Loyalty Program Push', count: metrics.loyaltyPush.length, events: metrics.loyaltyPush },
-          { label: 'Preemptive Concierge', count: metrics.preemptiveConcierge.length, events: metrics.preemptiveConcierge },
-          { label: 'Express Departure', count: metrics.expressDeparture.length, events: metrics.expressDeparture },
-        ],
-        timers: [
-          { label: 'Check-In Duration', events: metrics.checkInDuration },
-          { label: 'Room Latency', events: metrics.roomLatency },
-        ]
+        negative: config?.negative.map((def: any) => ({
+          label: def.label,
+          count: events.filter(e => e.id === def.id).length,
+          events: events.filter(e => e.id === def.id).map(e => ({ ...e, detail: def.description }))
+        })) || [],
+        positive: config?.positive.map((def: any) => ({
+          label: def.label,
+          count: events.filter(e => e.id === def.id).length,
+          events: events.filter(e => e.id === def.id).map(e => ({ ...e, detail: def.description }))
+        })) || [],
+        timers: config?.timers.map((def: any) => ({
+          label: def.label,
+          events: timerEvents.filter(e => e.id === def.id)
+        })) || []
       }
     });
   };
@@ -168,7 +168,7 @@ export default function HotelAuditPage() {
 
   if (isAddingStaff) {
     return (
-      <div className="fixed inset-0 z-[99999] bg-black text-white font-sans flex flex-col h-screen w-screen overflow-hidden">
+      <div className="fixed inset-0 z-[99999] bg-black text-white font-sans flex flex-col h-[100dvh] w-screen overflow-hidden">
         {/* iOS Header */}
         <div className="bg-[#1c1c1e]/90 backdrop-blur border-b border-gray-800 pt-12 pb-3 px-4 flex items-center justify-between">
           <button onClick={() => setIsAddingStaff(false)} className="text-[#0a84ff] text-lg flex items-center">
@@ -203,7 +203,7 @@ export default function HotelAuditPage() {
         </div>
 
         {/* iMessage Input Area */}
-        <div className="bg-[#1c1c1e] border-t border-gray-800 p-4 pb-8">
+        <div className="bg-[#1c1c1e] border-t border-gray-800 p-4 pb-[env(safe-area-inset-bottom,20px)]">
           <div className="flex gap-2 items-end">
             <button className="text-[#0a84ff] p-2 shrink-0">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
@@ -247,8 +247,15 @@ export default function HotelAuditPage() {
 
   return (
     <div className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-900 text-slate-100 font-sans p-4 pb-20">
-      <div id="photo-flash" className="fixed inset-0 bg-white z-[999999] opacity-0 pointer-events-none transition-opacity duration-150"></div>
       
+      {/* Stealthy Panic Button Side */}
+      <button 
+        onClick={() => setIsPanicked(true)}
+        className="fixed right-0 top-1/3 -translate-y-1/2 w-8 h-[60vh] bg-slate-900 border-y border-l border-slate-800 rounded-l-xl flex items-center justify-center z-[100] group"
+      >
+        <span className="text-slate-600 font-mono text-[10px] font-bold tracking-widest -rotate-90 whitespace-nowrap opacity-50 group-hover:opacity-100 transition-opacity">SAFE MODE</span>
+      </button>
+
       <div className="sticky top-0 z-50 mb-6 -mx-4 -mt-4 bg-slate-950/90 backdrop-blur border-b border-slate-900">
         <div className="flex items-center justify-between">
           <div className="pl-4 py-3">
@@ -258,30 +265,15 @@ export default function HotelAuditPage() {
               </svg>
             </Link>
           </div>
-          <button 
-            onClick={() => setIsPanicked(true)}
-            className="flex-1 py-4 text-slate-500 font-mono text-xs font-bold tracking-widest opacity-80 hover:bg-slate-900 transition-colors"
-          >
-            [ SAFE MODE ]
-          </button>
-          
-          <div className="pr-4 flex items-center">
-            <button 
-              onClick={triggerPhotoCapture}
-              className="w-10 h-10 rounded-full border-2 border-slate-700 bg-slate-800 flex items-center justify-center overflow-hidden hover:border-slate-500 transition-colors shadow-[0_0_15px_rgba(0,0,0,0.5)]"
-            >
-              <div className="w-8 h-8 rounded-full overflow-hidden opacity-50">
-                <BarStealthCamera ref={cameraRef} />
-              </div>
-            </button>
-          </div>
+          <div className="w-12"></div> {/* Spacer */}
+          <div className="pr-4 flex items-center"></div>
         </div>
       </div>
 
       <header className="mb-6 space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-white">Hotel Audit</h1>
-          <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">📸 {metrics.photosTaken}</span>
+          <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">📸 {photosTaken}</span>
         </div>
         
         <div className="grid grid-cols-2 gap-4">
@@ -315,7 +307,14 @@ export default function HotelAuditPage() {
             </div>
             <div className="flex flex-col flex-1 overflow-hidden">
               <span className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-0.5">Tracking Target (Staff / Area)</span>
-              <span className="text-sm font-bold text-white leading-tight truncate">{activeStaff}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-white leading-tight truncate">{activeStaff}</span>
+                {activeStaff !== "General / Unknown" && (
+                  <button onClick={() => renameStaff(activeStaff)} className="text-slate-500 hover:text-slate-300 transition-colors p-1 bg-slate-800 rounded">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           
@@ -348,7 +347,7 @@ export default function HotelAuditPage() {
               className="w-full bg-[#2c2c2e] hover:bg-[#3a3a3c] text-slate-300 py-3 mt-2 rounded-xl border border-slate-700 font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-              Take Photo Evidence {metrics.photosTaken > 0 && `(${metrics.photosTaken})`}
+              Take Photo Evidence {photosTaken > 0 && `(${photosTaken})`}
             </button>
           </div>
         </section>
@@ -374,54 +373,23 @@ export default function HotelAuditPage() {
 
           {viewMode === "negative" ? (
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => addEvent('cashUpgradeLeak', 'Cash Upgrade Leak')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">💷</span>
-                <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">Cash Upgrade Leak</span>
-                <span className="text-[10px] text-red-400 font-bold">{metrics.cashUpgradeLeak.length}</span>
-              </button>
-              <button onClick={() => addEvent('idComplianceFail', 'ID/Immigration Fail')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">🛂</span>
-                <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">ID Compliance Fail</span>
-                <span className="text-[10px] text-red-400 font-bold">{metrics.idComplianceFail.length}</span>
-              </button>
-              <button onClick={() => addEvent('guestDataExposure', 'Guest Data Exposure')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">📑</span>
-                <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">Guest Data Exposure</span>
-                <span className="text-[10px] text-red-400 font-bold">{metrics.guestDataExposure.length}</span>
-              </button>
-              <button onClick={() => addEvent('deepCleanOversight', 'Deep-Clean Oversight')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">🧹</span>
-                <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">Deep-Clean Oversight</span>
-                <span className="text-[10px] text-red-400 font-bold">{metrics.deepCleanOversight.length}</span>
-              </button>
-              <button onClick={() => addEvent('amenitiesMalfunction', 'Amenities Malfunction')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">🛏️</span>
-                <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">Amenities Malfunction</span>
-                <span className="text-[10px] text-red-400 font-bold">{metrics.amenitiesMalfunction.length}</span>
-              </button>
-              <button onClick={() => addEvent('unattendedDesk', 'Unattended Desk')} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">🛎️</span>
-                <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">Unattended Desk</span>
-                <span className="text-[10px] text-red-400 font-bold">{metrics.unattendedDesk.length}</span>
-              </button>
+              {config?.negative.map((m: any) => (
+                <button key={m.id} onClick={() => addEvent(m.id)} className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded flex flex-col items-center justify-center gap-2 transition-colors">
+                  <span className="text-2xl">🔴</span>
+                  <span className="text-[11px] font-semibold text-slate-300 text-center leading-tight">{m.label}</span>
+                  <span className="text-[10px] text-red-400 font-bold">{events.filter(e => e.id === m.id).length}</span>
+                </button>
+              ))}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button onClick={() => addEvent('loyaltyPush', 'Loyalty Push')} className="bg-emerald-900/20 hover:bg-emerald-800/40 border border-emerald-700/50 p-4 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">🌟</span>
-                <span className="text-xs font-semibold text-emerald-100 text-center">Loyalty Program Push</span>
-                <span className="text-[10px] font-bold text-emerald-400 px-2 py-0.5 bg-emerald-950 rounded-full">{metrics.loyaltyPush.length}</span>
-              </button>
-              <button onClick={() => addEvent('preemptiveConcierge', 'Preemptive Concierge')} className="bg-emerald-900/20 hover:bg-emerald-800/40 border border-emerald-700/50 p-4 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">🤵</span>
-                <span className="text-xs font-semibold text-emerald-100 text-center">Preemptive Concierge</span>
-                <span className="text-[10px] font-bold text-emerald-400 px-2 py-0.5 bg-emerald-950 rounded-full">{metrics.preemptiveConcierge.length}</span>
-              </button>
-              <button onClick={() => addEvent('expressDeparture', 'Express Departure')} className="bg-emerald-900/20 hover:bg-emerald-800/40 border border-emerald-700/50 p-4 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors">
-                <span className="text-2xl">🏃</span>
-                <span className="text-xs font-semibold text-emerald-100 text-center">Express Departure</span>
-                <span className="text-[10px] font-bold text-emerald-400 px-2 py-0.5 bg-emerald-950 rounded-full">{metrics.expressDeparture.length}</span>
-              </button>
+              {config?.positive.map((m: any) => (
+                <button key={m.id} onClick={() => addEvent(m.id)} className="bg-emerald-900/20 hover:bg-emerald-800/40 border border-emerald-700/50 p-4 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors">
+                  <span className="text-2xl">🟢</span>
+                  <span className="text-xs font-semibold text-emerald-100 text-center">{m.label}</span>
+                  <span className="text-[10px] font-bold text-emerald-400 px-2 py-0.5 bg-emerald-950 rounded-full">{events.filter(e => e.id === m.id).length}</span>
+                </button>
+              ))}
             </div>
           )}
         </section>
@@ -435,7 +403,7 @@ export default function HotelAuditPage() {
                 <button 
                   onClick={() => {
                     const dur = Math.round((Date.now() - checkInTimerStart) / 1000);
-                    setMetrics(p => ({ ...p, checkInDuration: [...p.checkInDuration, { timestamp: new Date().toISOString(), duration: dur, staff: activeStaff }] }));
+                    setTimerEvents(prev => [...prev, { id: "checkInDuration", timestamp: new Date().toISOString(), duration: dur, staff: activeStaff }]);
                     setCheckInTimerStart(null);
                   }}
                   className="w-full bg-red-600/20 text-red-400 border border-red-500/30 py-2 rounded font-bold text-xs animate-pulse"
@@ -450,7 +418,7 @@ export default function HotelAuditPage() {
                   START
                 </button>
               )}
-              <span className="text-[10px] text-slate-500">{metrics.checkInDuration.length} logged</span>
+              <span className="text-[10px] text-slate-500">{timerEvents.filter(e => e.id === "checkInDuration").length} logged</span>
             </div>
             
             <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center gap-2">
@@ -459,7 +427,7 @@ export default function HotelAuditPage() {
                 <button 
                   onClick={() => {
                     const dur = Math.round((Date.now() - roomTimerStart) / 1000);
-                    setMetrics(p => ({ ...p, roomLatency: [...p.roomLatency, { timestamp: new Date().toISOString(), duration: dur, staff: activeStaff }] }));
+                    setTimerEvents(prev => [...prev, { id: "roomLatency", timestamp: new Date().toISOString(), duration: dur, staff: activeStaff }]);
                     setRoomTimerStart(null);
                   }}
                   className="w-full bg-red-600/20 text-red-400 border border-red-500/30 py-2 rounded font-bold text-xs animate-pulse"
@@ -474,8 +442,25 @@ export default function HotelAuditPage() {
                   START
                 </button>
               )}
-              <span className="text-[10px] text-slate-500">{metrics.roomLatency.length} logged</span>
+              <span className="text-[10px] text-slate-500">{timerEvents.filter(e => e.id === "roomLatency").length} logged</span>
             </div>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Evidence</h2>
+          <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center gap-4">
+            <div className="w-full aspect-video rounded-lg overflow-hidden border border-slate-600 relative bg-black shadow-inner">
+              <BarStealthCamera ref={cameraRef} />
+            </div>
+            <button 
+              onClick={triggerPhotoCapture}
+              className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 py-3 rounded-lg font-bold flex items-center justify-center gap-2 active:scale-95 transition-all"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              TAKE PHOTO EVIDENCE
+            </button>
+            <span className="text-xs text-slate-400">{photosTaken} photos taken this session</span>
           </div>
         </section>
 

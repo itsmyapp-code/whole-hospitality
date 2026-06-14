@@ -117,21 +117,28 @@ export const generateUniversalPDF = async (data: PdfExportData) => {
 
     const staffBreakdownData: any[] = [];
     data.staffList.forEach(staffMem => {
-      let staffTotal = 0;
+      let negativeCount = 0;
+      let positiveCount = 0;
+      
       data.metrics.negative.forEach(m => {
-        staffTotal += m.events.filter(e => e.staff === staffMem).length;
+        negativeCount += m.events.filter(e => e.staff === staffMem).length;
       });
-      if (staffTotal > 0 || staffMem !== "General / Unknown") {
-         staffBreakdownData.push([staffMem, staffTotal]);
+      data.metrics.positive.forEach(m => {
+        positiveCount += m.events.filter(e => e.staff === staffMem).length;
+      });
+      
+      if (negativeCount > 0 || positiveCount > 0 || staffMem !== "General / Unknown") {
+         staffBreakdownData.push([staffMem, negativeCount, positiveCount]);
       }
     });
 
     if (staffBreakdownData.length > 0) {
       autoTable(doc, {
         startY: finalY + 5,
-        head: [['Staff Member / Description', 'Total Infractions Logged']],
+        head: [['Staff Member / Description', 'Infractions (Negative)', 'Commendations (Positive)']],
         body: staffBreakdownData,
         theme: 'grid',
+        headStyles: { fillColor: [71, 85, 105] },
         margin: { bottom: 30 }
       });
       finalY = (doc as any).lastAutoTable.finalY + 15;
@@ -185,16 +192,37 @@ export const generateUniversalPDF = async (data: PdfExportData) => {
     doc.text("Photographic Evidence", 14, 20);
     
     let yPos = 30;
-    data.captures.forEach((cap: any, index: number) => {
-      if (yPos > 240) {
+    const pageHeight = (doc as any).internal.pageSize.getHeight();
+    
+    for (let index = 0; index < data.captures.length; index++) {
+      const cap = data.captures[index];
+      let imgW = 120;
+      let imgH = 90;
+      
+      const dims = await getImageDimensions(cap.dataUrl);
+      if (dims && dims.w > 0 && dims.h > 0) {
+        const maxW = 160;
+        const maxH = 100;
+        const ratio = dims.w / dims.h;
+        
+        imgW = maxW;
+        imgH = imgW / ratio;
+        
+        if (imgH > maxH) {
+          imgH = maxH;
+          imgW = imgH * ratio;
+        }
+      }
+
+      if (yPos + imgH + 15 > pageHeight - 30) {
         doc.addPage();
         yPos = 20;
       }
       doc.setFontSize(10);
       doc.text(`Evidence #${index + 1} - Captured: ${new Date(cap.timestamp).toLocaleString('en-GB')}`, 14, yPos);
-      doc.addImage(cap.dataUrl, 'JPEG', 14, yPos + 5, 120, 90);
-      yPos += 105;
-    });
+      doc.addImage(cap.dataUrl, 'JPEG', 14, yPos + 5, imgW, imgH);
+      yPos += imgH + 15;
+    }
   }
 
   // 6. Add Metric Glossary Appendix
@@ -205,64 +233,17 @@ export const generateUniversalPDF = async (data: PdfExportData) => {
 
   let glossaryData: any[] = [];
   
-  if (data.moduleType === "BAR") {
-    glossaryData = [
-      [{ content: "[NEGATIVE INFRACTIONS]", styles: { fontStyle: 'bold', textColor: [220, 38, 38], fontSize: 12 } }],
-      ["Free Pours: Serving drinks without a jigger/optic."],
-      ["Incorrect Measure: Using wrong measure size (e.g., 50ml instead of 25ml)."],
-      ["No Ring In: Taking cash but never entering the sale into the till."],
-      ["Charge Discrepancy: Undercharging friends or overcharging tourists."],
-      ["Till Left Open: Walking away while the cash drawer is wide open."],
-      ["Unrecorded Wastage: Dropping a drink without logging it in the wastage book."],
-      ["Giving Away Drinks: Unauthorized free drinks or heavy 'comps'."],
-      ["Dirty Glassware: Serving in a glass with lipstick or chips."],
-      ["Using Phone: Staff texting/browsing while customers wait."],
-      ["Eating/Drinking: Consuming food/drink behind the bar."],
-      ["Underage Staff Serving: Under 18 serving alcohol without supervision."],
-      ["No ID Check: Failing to Challenge 25 young patrons."],
-      [{ content: "[POSITIVE OBSERVATIONS]", styles: { fontStyle: 'bold', textColor: [16, 185, 129], fontSize: 12, cellPadding: { top: 10 } } }],
-      ["Immediate Ring-In: Entering transactions the exact moment cash is taken."],
-      ["Consistent Till Closure: Keeping the drawer shut between transactions."],
-      ["Accurate Change: Visually counting back change to customers."],
-      ["Immediate Greeting: Acknowledging a guest within 30 seconds."],
-      ["Upselling / Upgrades: Suggesting premium brands or larger pours."],
-      ["Efficiency Under Pressure: Clean, methodical workflow during rush hour."],
-      ["Exact Measure Pouring: Perfect use of jiggers/optics."],
-      ["Active Spill Logging: Immediately recording dropped drinks."],
-      ["Perfect Glassware: Flawlessly clean, polished glasses used."],
-      ["Proactive Age Verification: Smoothly initiating Challenge 25 protocols."],
-      ["Responsible Service: Politely cutting off over-served guests."],
-      ["Cleanliness Maintenance: Wiping down the bar top instantly after service."]
-    ];
-  } else if (data.moduleType === "RESTAURANT") {
-    glossaryData = [
-      [{ content: "[NEGATIVE INFRACTIONS]", styles: { fontStyle: 'bold', textColor: [220, 38, 38], fontSize: 12 } }],
-      ["Off-Pocket Cash: Settling a bill with cash that goes into an apron, not the till."],
-      ["Unrecorded Item Upgrade: e.g., Adding truffle fries without charging the supplement."],
-      ["Table Squatting Delay: Ignoring a table that clearly wants to pay and leave."],
-      ["Unauthorized Comps: Giving away desserts or drinks without manager approval."],
-      ["Till Left Open: Leaving the POS cash drawer unlocked."],
-      ["Menu Price Discrepancy: Charging a different price than listed on the menu."],
-      [{ content: "[POSITIVE OBSERVATIONS]", styles: { fontStyle: 'bold', textColor: [16, 185, 129], fontSize: 12, cellPadding: { top: 10 } } }],
-      ["Allergen Verification: Explicitly asking guests about allergies before taking the order."],
-      ["High-Margin Upselling: Suggesting sides, bottled water, or premium pairings."],
-      ["Bill Accuracy: Delivering the bill with 100% correct items."]
-    ];
-  } else if (data.moduleType === "HOTEL") {
-    glossaryData = [
-      [{ content: "[NEGATIVE INFRACTIONS]", styles: { fontStyle: 'bold', textColor: [220, 38, 38], fontSize: 12 } }],
-      ["Cash Upgrade Leak: Taking cash for a room upgrade and pocketing it."],
-      ["ID/Immigration Fail: Failing to scan or record required passports for foreign guests."],
-      ["Guest Data Exposure: Leaving guest registration cards or screens visible to the public."],
-      ["Deep-Clean Oversight: Missing obvious cleanliness issues in common areas or rooms."],
-      ["Amenities Malfunction: Broken keycards, missing towels, or empty soap dispensers not actioned."],
-      ["Unattended Desk: Leaving the front desk entirely empty without a 'back in 5 mins' sign."],
-      [{ content: "[POSITIVE OBSERVATIONS]", styles: { fontStyle: 'bold', textColor: [16, 185, 129], fontSize: 12, cellPadding: { top: 10 } } }],
-      ["Loyalty Program Push: Actively encouraging sign-ups for the hotel rewards program."],
-      ["Preemptive Concierge: Offering maps, dining tips, or umbrella assistance before being asked."],
-      ["Express Departure: Executing a flawless, rapid check-out process."]
-    ];
-  }
+  // Dynamically load Glossary from config
+  const { getActiveConfiguration } = require('./configMigration');
+  const config = getActiveConfiguration();
+  const moduleConfig = config.modules[data.moduleType] || { negative: [], positive: [] };
+
+  glossaryData = [
+    [{ content: "Negative Infractions", styles: { fontStyle: 'bold', textColor: [220, 38, 38], fontSize: 12 } }],
+    ...moduleConfig.negative.map((m: any) => [`${m.label}: ${m.description || ''}`.replace(/[^\x00-\x7F]/g, "")]),
+    [{ content: "Positive Observations", styles: { fontStyle: 'bold', textColor: [16, 185, 129], fontSize: 12, cellPadding: { top: 10 } } }],
+    ...moduleConfig.positive.map((m: any) => [`${m.label}: ${m.description || ''}`.replace(/[^\x00-\x7F]/g, "")])
+  ];
 
   autoTable(doc, {
     startY: 30,
