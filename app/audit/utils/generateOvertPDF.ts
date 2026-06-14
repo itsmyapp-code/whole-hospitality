@@ -1,5 +1,5 @@
-import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { OVERT_HOTEL_CHECKLIST } from "../overt-hotel/checklist";
 
 export const generateOvertHotelPDF = async (data: {
@@ -85,7 +85,7 @@ export const generateOvertHotelPDF = async (data: {
         return [item.label, item.description, state];
       });
       
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: yPos,
         head: [[sub.title, "Description", "Result"]],
         body: tableData,
