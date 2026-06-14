@@ -132,7 +132,7 @@ export default function AuditHub() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <button 
             onClick={() => handleModuleSelect('/audit/bar')}
             className="group bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
@@ -155,6 +155,14 @@ export default function AuditHub() {
           >
             <span className="text-4xl group-hover:scale-110 transition-transform">🏨</span>
             <span className="font-semibold text-slate-300 text-center">Hotel & Guest<br/>Services</span>
+          </button>
+
+          <button 
+            onClick={() => handleModuleSelect('/audit/overt-hotel')}
+            className="group bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
+          >
+            <span className="text-4xl group-hover:scale-110 transition-transform">📋</span>
+            <span className="font-semibold text-slate-300 text-center">Overt Hotel<br/>Checklist</span>
           </button>
         </div>
 
