@@ -263,7 +263,7 @@ export default function AuditHub() {
 
           <section>
             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2">Legal & Compliance Resources</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button 
                 onClick={downloadDPIA}
                 className="group bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
@@ -280,6 +280,16 @@ export default function AuditHub() {
               >
                 <span className="text-4xl group-hover:scale-110 transition-transform">✍️</span>
                 <span className="font-semibold text-slate-300 text-center">Contract Management<br/><span className="text-xs text-slate-500 font-normal">(Sign & Manage Agreements)</span></span>
+              </a>
+
+              <a 
+                href="https://www.itsmyapp.co.uk/room-inventory-pro"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
+              >
+                <span className="text-4xl group-hover:scale-110 transition-transform">📦</span>
+                <span className="font-semibold text-slate-300 text-center">Room Inventory Pro<br/><span className="text-xs text-slate-500 font-normal">(Manage Room & Asset Inventories)</span></span>
               </a>
             </div>
           </section>
