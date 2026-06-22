@@ -271,6 +271,16 @@ export default function AuditHub() {
                 <span className="text-4xl group-hover:scale-110 transition-transform">⚖️</span>
                 <span className="font-semibold text-slate-300 text-center">DPIA Template<br/><span className="text-xs text-slate-500 font-normal">(Download Word Document)</span></span>
               </button>
+
+              <a 
+                href="https://www.itsmyapp.co.uk/admin/contracts"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 transition-all"
+              >
+                <span className="text-4xl group-hover:scale-110 transition-transform">✍️</span>
+                <span className="font-semibold text-slate-300 text-center">Contract Management<br/><span className="text-xs text-slate-500 font-normal">(Sign & Manage Agreements)</span></span>
+              </a>
             </div>
           </section>
         </div>
