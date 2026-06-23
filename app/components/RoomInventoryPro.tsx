@@ -147,7 +147,7 @@ export default function RoomInventoryPro() {
               Room Inventory Pro
             </h2>
             <p className="text-lg text-slate-400 max-w-2xl">
-              Technical & Marketing Documentation • Generated: 2026-06-22
+              Technical & Marketing Documentation
             </p>
           </div>
           <div className="text-left md:text-right shrink-0">
