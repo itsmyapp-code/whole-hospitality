@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-import Navbar from "./components/Navbar";
+import { Navbar, CookieBanner } from "./components";
 
 export const metadata: Metadata = {
   title: "Whole Hospitality",
@@ -44,6 +44,7 @@ export default function RootLayout({
       >
         <Navbar />
         {children}
+        <CookieBanner />
       </body>
     </html>
   );

@@ -42,11 +42,13 @@ export default function Footer() {
                     <p className="text-sm">Powered by Whole Hospitality</p>
                 </div>
 
-                <div className="flex flex-wrap gap-6 text-sm">
+                <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm justify-center md:justify-end">
                     <a href="/#contact" className="hover:text-white transition-colors">Contact</a>
                     <a href="/legal/compliance-framework" className="hover:text-white transition-colors">Legal & Compliance</a>
-                    <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-                    <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+                    <a href="/legal/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</a>
+                    <a href="/legal/terms-of-service" className="hover:text-white transition-colors">Terms of Service</a>
+                    <a href="/legal/cookie-policy" className="hover:text-white transition-colors">Cookie Policy</a>
+                    <a href="/legal/accessibility" className="hover:text-white transition-colors">Accessibility</a>
                 </div>
             </div>
 

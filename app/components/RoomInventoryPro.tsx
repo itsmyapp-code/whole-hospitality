@@ -149,6 +149,10 @@ export default function RoomInventoryPro() {
             <p className="text-lg text-slate-400 max-w-2xl">
               Technical & Marketing Documentation
             </p>
+            <div className="mt-4 inline-flex items-center gap-2.5 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs md:text-sm font-bold shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+              Zero-Surveillance, 100% Client-Side Data Architecture
+            </div>
           </div>
           <div className="text-left md:text-right shrink-0">
             <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wide">
