@@ -27,11 +27,22 @@ export default function ContactForm() {
 
     setStatus("submitting");
     
-    // Simulate API Submission
+    // Build mailto parameters
+    const subject = encodeURIComponent(`Systems Audit Inquiry - ${formData.venue || formData.name}`);
+    const body = encodeURIComponent(
+      `Name: ${formData.name}\n` +
+      `Venue: ${formData.venue || "Not Specified"}\n` +
+      `Email: ${formData.email}\n\n` +
+      `Message:\n${formData.message}`
+    );
+    
+    // Open email client pre-populated with form details
+    window.location.href = `mailto:info@wholehospitality.co.uk?subject=${subject}&body=${body}`;
+    
     setTimeout(() => {
       setStatus("success");
       setFormData({ name: "", email: "", venue: "", message: "" });
-    }, 2000);
+    }, 1000);
   };
 
   return (
