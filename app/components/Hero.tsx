@@ -33,7 +33,7 @@ export default function Hero() {
                 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <a 
-                        href="mailto:info@wholehospitality.co.uk?subject=Systems%20Audit%20Inquiry"
+                        href="#contact"
                         className="bg-blue-600 hover:bg-blue-500 text-white hover:shadow-blue-500/20 px-8 py-4 rounded-full font-bold text-lg transition-all transform hover:scale-105 shadow-lg cursor-pointer"
                     >
                         Book a Systems Audit

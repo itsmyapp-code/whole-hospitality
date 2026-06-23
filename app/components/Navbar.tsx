@@ -78,7 +78,7 @@ export default function Navbar() {
                                 </Link>
                             ))}
                             <a
-                                href="mailto:info@wholehospitality.co.uk?subject=Systems%20Audit%20Inquiry"
+                                href="/#contact"
                                 className="bg-white text-gray-900 hover:bg-gray-100 px-5 py-2 rounded-full text-sm font-bold transition-all transform hover:scale-105"
                             >
                                 Book Audit
@@ -122,7 +122,7 @@ export default function Navbar() {
                     ))}
                     <div className="pt-4 pb-2 space-y-2">
                         <a
-                            href="mailto:info@wholehospitality.co.uk?subject=Systems%20Audit%20Inquiry"
+                            href="/#contact"
                             onClick={() => setIsOpen(false)}
                             className="block w-full text-center bg-white text-gray-900 hover:bg-gray-100 px-5 py-3 rounded-full text-base font-bold transition-all"
                         >
