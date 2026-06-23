@@ -77,12 +77,12 @@ export default function Navbar() {
                                     {link.name}
                                 </Link>
                             ))}
-                            <Link
-                                href="/#contact"
+                            <a
+                                href="mailto:info@wholehospitality.co.uk?subject=Systems%20Audit%20Inquiry"
                                 className="bg-white text-gray-900 hover:bg-gray-100 px-5 py-2 rounded-full text-sm font-bold transition-all transform hover:scale-105"
                             >
                                 Book Audit
-                            </Link>
+                            </a>
                         </div>
                     </div>
 
@@ -121,13 +121,13 @@ export default function Navbar() {
                         </Link>
                     ))}
                     <div className="pt-4 pb-2 space-y-2">
-                        <Link
-                            href="/#contact"
+                        <a
+                            href="mailto:info@wholehospitality.co.uk?subject=Systems%20Audit%20Inquiry"
                             onClick={() => setIsOpen(false)}
                             className="block w-full text-center bg-white text-gray-900 hover:bg-gray-100 px-5 py-3 rounded-full text-base font-bold transition-all"
                         >
                             Book Audit
-                        </Link>
+                        </a>
                     </div>
                 </div>
             </div>

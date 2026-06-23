@@ -18,7 +18,7 @@ export default function ContactForm() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.message) {
       alert("Please fill in all required fields.");
@@ -27,22 +27,39 @@ export default function ContactForm() {
 
     setStatus("submitting");
     
-    // Build mailto parameters
-    const subject = encodeURIComponent(`Systems Audit Inquiry - ${formData.venue || formData.name}`);
-    const body = encodeURIComponent(
-      `Name: ${formData.name}\n` +
-      `Venue: ${formData.venue || "Not Specified"}\n` +
-      `Email: ${formData.email}\n\n` +
-      `Message:\n${formData.message}`
-    );
-    
-    // Open email client pre-populated with form details
-    window.location.href = `mailto:info@wholehospitality.co.uk?subject=${subject}&body=${body}`;
-    
-    setTimeout(() => {
-      setStatus("success");
-      setFormData({ name: "", email: "", venue: "", message: "" });
-    }, 1000);
+    const accessKey = process.env.NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY || "a4608d8b-b674-41ff-ba2d-6f5dc8113b6d";
+
+    try {
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          access_key: accessKey,
+          name: formData.name,
+          email: formData.email,
+          venue: formData.venue || "Not Specified",
+          message: formData.message,
+          subject: `Systems Audit Inquiry - ${formData.venue || formData.name}`,
+          from_name: "Whole Hospitality Landing Page Form",
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setStatus("success");
+        setFormData({ name: "", email: "", venue: "", message: "" });
+      } else {
+        alert(result.message || "Something went wrong. Please try again or email us directly.");
+        setStatus("idle");
+      }
+    } catch (error) {
+      console.error("Web3Forms submission error:", error);
+      alert("Network error. Please check your connection or contact us directly via email.");
+      setStatus("idle");
+    }
   };
 
   return (

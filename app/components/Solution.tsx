@@ -1,6 +1,6 @@
 export default function Solution() {
     return (
-        <section className="py-20 px-8 bg-white text-gray-900">
+        <section className="py-20 px-8 bg-white text-gray-900" id="solutions">
             <div className="max-w-6xl mx-auto">
                 <div className="text-center mb-16">
                     <h2 className="text-3xl md:text-4xl font-bold mb-4">The Solution: The "Whole" Approach</h2>

@@ -3,14 +3,6 @@
 import Image from "next/image";
 
 export default function Hero() {
-    const handleExploreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-        e.preventDefault();
-        const element = document.getElementById("room-inventory");
-        if (element) {
-            element.scrollIntoView({ behavior: "smooth" });
-        }
-    };
-
     return (
         <section className="relative h-screen flex items-center justify-center bg-slate-700 text-white overflow-hidden font-sans">
             {/* Background Image Placeholder */}
@@ -40,12 +32,12 @@ export default function Hero() {
                 </p>
                 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <button 
-                        onClick={handleExploreClick}
+                    <a 
+                        href="mailto:info@wholehospitality.co.uk?subject=Systems%20Audit%20Inquiry"
                         className="bg-blue-600 hover:bg-blue-500 text-white hover:shadow-blue-500/20 px-8 py-4 rounded-full font-bold text-lg transition-all transform hover:scale-105 shadow-lg cursor-pointer"
                     >
-                        Explore the Software
-                    </button>
+                        Book a Systems Audit
+                    </a>
                 </div>
             </div>
         </section>
