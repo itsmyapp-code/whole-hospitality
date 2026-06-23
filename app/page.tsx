@@ -1,4 +1,4 @@
-import { Hero, RealityCheck, Solution, Features, About, RoomInventoryPro, Footer } from "./components";
+import { Hero, RealityCheck, Solution, Features, About, RoomInventoryPro, ContactForm, Footer } from "./components";
 
 export default function Home() {
   return (
@@ -9,6 +9,7 @@ export default function Home() {
       <Features />
       <About />
       <RoomInventoryPro />
+      <ContactForm />
       <Footer />
     </main>
   );
