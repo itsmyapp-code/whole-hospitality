@@ -30,14 +30,6 @@ export default function Hero() {
                 <p className="text-xl md:text-2xl mb-10 text-gray-200 max-w-2xl mx-auto">
                     The only hospitality platform that starts with an on-site audit. We find the leaks in your GP, stock, and operations, then give you the tools to plug them for good.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <button className="bg-white text-gray-900 hover:bg-gray-100 px-8 py-3 rounded-full font-semibold transition-all transform hover:scale-105">
-                        Book a Systems Audit
-                    </button>
-                    <button className="bg-transparent border-2 border-white text-white hover:bg-white/10 px-8 py-3 rounded-full font-semibold transition-all transform hover:scale-105">
-                        Explore the Software
-                    </button>
-                </div>
             </div>
         </section>
     );
