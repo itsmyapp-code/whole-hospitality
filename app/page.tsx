@@ -1,10 +1,4 @@
-import Hero from "./components/Hero";
-import RealityCheck from "./components/RealityCheck";
-import Solution from "./components/Solution";
-import Features from "./components/Features";
-import About from "./components/About";
-import LeadMagnet from "./components/LeadMagnet";
-import Footer from "./components/Footer";
+import { Hero, RealityCheck, Solution, Features, About, RoomInventoryPro, Footer } from "./components";
 
 export default function Home() {
   return (
@@ -14,8 +8,9 @@ export default function Home() {
       <Solution />
       <Features />
       <About />
-      <LeadMagnet />
+      <RoomInventoryPro />
       <Footer />
     </main>
   );
 }
+
